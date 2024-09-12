@@ -1,0 +1,9 @@
+pandas
+pydeck
+streamlit
+python-dotenv
+langchain
+openai
+PyPDF2
+boto3
+asyncio
