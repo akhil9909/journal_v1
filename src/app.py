@@ -3,11 +3,14 @@ import openai
 import os
 import json
 from functions import run_assistant, get_chat_history
-#from awsfunc import save_chat_history
+from awsfunc import save_chat_history, get_openai_api_key
 import base64
+import asyncio
 
 # Get OpenAI API key from environment variable
-openai.api_key = os.getenv("OPENAI_API_KEY")
+#openai.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = get_openai_api_key()
+
 
 # Initialize thread
 if "thread_id" not in st.session_state:
@@ -16,11 +19,8 @@ if "thread_id" not in st.session_state:
 
 #initialize root directory
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+INITIAL_PROMPT = "User prompt empty"
 
-# Get available assistants (you'll need to implement this)
-assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "assistant_2_id"]  # Replace with your logic
-
-selected_assistant = st.selectbox("Select Assistant", assistants)
 
 ### FUNCTION DEFINITIONS ###
 
@@ -114,17 +114,64 @@ async def main(human_prompt: str) -> dict:
             st.session_state.LOG.append(f"AI: {chatbot_response}")
             st.session_state.MEMORY.append({'role': "assistant", 'content': chatbot_response})
 
-            res = "success"
+            res = {'status': 0, 'message': "Success"}
 
+    except:
+        res = {'status': 1, 'message': "Failure"}
+        return res
     return res # work on it, later add debugging functionality to add details to response
 
 
 
 ### MAIN STREAMLIT UI STARTS HERE ###
+st.set_page_config(
+    page_title="Journal V1 App",
+    layout="wide"
+)
+# Get available assistants (you'll need to implement this)
+assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "assistant_2_id"]  # Replace with your logic
+
+selected_assistant = st.selectbox("Select Assistant", assistants)
+
+if "initial_prompt" not in st.session_state:
+    st.session_state.initial_prompt = INITIAL_PROMPT;
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = ""
+
+col1, col2 = st.columns(2)
+
+# Place buttons side by side
+with col1:
+    if st.button("save chat history"):
+        if st.session_state.thread_id and selected_assistant:
+            if st.session_state.chat_history == "":
+                st.text("No Chat History to Save")
+            elif save_chat_history(st.session_state.thread_id, 
+                      selected_assistant, 
+                      st.session_state.initial_prompt, 
+                      st.session_state.chat_history):
+                st.text("Chat history saved")
+            else:
+                st.text("Failed to save Chat history")
+        else:
+            st.text("No Thread to Save")
+
+with col2:
+    if st.button("New Session"):
+        try:
+            for key in st.session_state.keys():
+                del st.session_state[key]
+            prompt_box = st.empty()#... not working
+            chat_box = st.empty()#... not working
+            #trigger either main function again, or render chat history so far code block
+            st.rerun()
+        except:
+            st.text("new session initiated")
+        
 
 # Define main layout
 st.title("My Journal")
-st.subheader("Record your journal in the app")
 st.subheader("")
 chat_box = st.container()
 st.write("")
@@ -167,9 +214,21 @@ with chat_box:
 
 # Define an input box for human prompts
 with prompt_box:
-    human_prompt = st.text_input("Today I :", value="", key=f"text_input_{len(st.session_state.LOG)}")
+    human_prompt = st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
 
 
 # Gate the subsequent chatbot response to only when the user has entered a prompt
 if len(human_prompt) > 0:
     run_res = asyncio.run(main(human_prompt))
+    chat_history = get_chat_history()
+    formatted_chat_history = ""
+    for message in chat_history:
+        if message.role == "user":
+            formatted_chat_history += f"**You:** {message.content[0].text.value}\n" 
+            if st.session_state.initial_prompt == INITIAL_PROMPT:
+                st.session_state.initial_prompt = message.content[0].text.value
+        elif message.role == "assistant":
+            formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
+    st.session_state.chat_history = formatted_chat_history
+    if run_res['status'] == 0: #i removed  "if run_res['status'] == 0 and not DEBUG"
+        st.rerun()

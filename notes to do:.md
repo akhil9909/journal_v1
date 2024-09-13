@@ -14,4 +14,26 @@ k) do the initalizing page config
 ADD AWS FUNC FILE TRO SAVE, AND KEYS TO REPO
 
 
-1. YOU NEED TO WORK ON GET_CHAT_MESSAGE FUNCTION AND UPLOADING THE ARTIFACT (IMAGES) IN THE LOCAL
+[DONE]] YOU NEED TO WORK ON GET_CHAT_MESSAGE FUNCTION AND UPLOADING THE ARTIFACT (IMAGES) IN THE LOCAL
+
+[DONE]  check if the followup prompt is workiung , depends on your get_chat_message
+
+
+2. St.page_layout as wide is not working somehow, see if there is issue of css, 
+3. Fix CSS colour issues
+4. then save threadIds (minimum) and conversations in dynamoDB. check on AWS console
+5. Thn deploy on an EC2 for app to run
+6. then use auth to login in app on internet
+
+
+to do in app
+1. add a sidebar or new button for "New journal"
+2. then use syt.chear_cache and st.rerunn to rerun stuff. would work
+3. put a button only, see if you can soplit streamlit in 2 colsm just for the button
+
+if st.button("Refresh and Clear Cache"):
+    st.cache_data.clear()
+    st.rerun()
+
+new sesison not working, handle later
+---
