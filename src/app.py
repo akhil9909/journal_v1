@@ -139,12 +139,17 @@ if "initial_prompt" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = ""
 
+if "chat_history_status" not in st.session_state:
+    st.session_state.chat_history_status = "Chat history NOT saved"
+
 col1, col2 = st.columns(2)
 
 # Place buttons side by side
 with col1:
     if st.button("save chat history"):
-        if st.session_state.thread_id and selected_assistant:
+        if st.session_state.chat_history_status == "Chat history saved":
+            st.text("Chat history auto saved")
+        else:
             if st.session_state.chat_history == "":
                 st.text("No Chat History to Save")
             elif save_chat_history(st.session_state.thread_id, 
@@ -154,8 +159,6 @@ with col1:
                 st.text("Chat history saved")
             else:
                 st.text("Failed to save Chat history")
-        else:
-            st.text("No Thread to Save")
 
 with col2:
     if st.button("New Session"):
@@ -230,5 +233,13 @@ if len(human_prompt) > 0:
         elif message.role == "assistant":
             formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
     st.session_state.chat_history = formatted_chat_history
+    if save_chat_history(st.session_state.thread_id, 
+                      selected_assistant, 
+                      st.session_state.initial_prompt, 
+                      st.session_state.chat_history):
+         st.session_state.chat_history_status = "Chat history saved"
+    else:
+        st.text("Failed to save Chat history")
+        st.session_state.chat_history_status = "Chat history NOT saved"
     if run_res['status'] == 0: #i removed  "if run_res['status'] == 0 and not DEBUG"
         st.rerun()
