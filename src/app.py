@@ -174,7 +174,7 @@ with col2:
         
 
 # Define main layout
-st.title("My Journal")
+st.title("My Journal v1")
 st.subheader("")
 chat_box = st.container()
 st.write("")
