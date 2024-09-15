@@ -31,5 +31,6 @@ jobs:
           git pull origin main
           source venv/bin/activate
           pip install -r requirements.txt
-          nohup streamlit run src/app.py &
+          nohup streamlit run src/app.py > streamlit.log 2>&1 &
+          disown
           EOF
