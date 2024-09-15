@@ -24,13 +24,26 @@ jobs:
           pkill -f 'streamlit run'
           EOF
 
-      - name: Pull latest code and restart app on EC2
+      - name: Pull latest code 
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=5 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
           cd /home/ec2-user/journal_v1
           git pull origin main
+          EOF
+
+      - name: update requirements.txt
+        run: |
+          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=5 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          cd /home/ec2-user/journal_v1
           source venv/bin/activate
           pip install -r requirements.txt
+          EOF
+          
+      - name: Pull latest code and restart app on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=5 ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+          cd /home/ec2-user/journal_v1
+          source venv/bin/activate
           nohup streamlit run src/app.py > streamlit.log 2>&1 &
           disown
           EOF
