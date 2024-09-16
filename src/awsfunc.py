@@ -1,6 +1,7 @@
 import boto3
 import json
 import os
+from botocore.exceptions import ClientError
 
 #aws_access_key_id = os.getenv('AWS_ACCESS_KEY')
 #aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -50,3 +51,27 @@ def get_openai_api_key():
     secret_dict = json.loads(secret_data)  # Parse the JSON string
     openai_api_key_res = secret_dict['OPENAI_API_KEY'] 
     return openai_api_key_res
+
+def get_credentials():
+
+    secret_name = "streamlit_credentials"
+    region_name = "us-west-2"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        # For a list of exceptions thrown, see
+        # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
+        raise e
+
+    secret = get_secret_value_response['SecretString']
+    return secret
