@@ -3,13 +3,17 @@ import openai
 import os
 import json
 from functions import run_assistant, get_chat_history
-from awsfunc import save_chat_history, get_openai_api_key
+from awsfunc import save_chat_history, get_openai_api_key, get_credentials
 import base64
 import asyncio
 
 # Get OpenAI API key from environment variable
 #openai.api_key = os.getenv("OPENAI_API_KEY")
 openai.api_key = get_openai_api_key()
+
+# Session state for login status
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
 
 
 # Initialize thread
@@ -165,12 +169,18 @@ with col2:
         try:
             for key in st.session_state.keys():
                 del st.session_state[key]
+            #st.text("keys deleted")
             prompt_box = st.empty()#... not working
+            #st.text("prompt empty")
             chat_box = st.empty()#... not working
+            #st.text("chat empty")
+            st.session_state.authenticated = False
             #trigger either main function again, or render chat history so far code block
-            st.rerun()
-        except:
             st.text("new session initiated")
+            st.rerun()
+            
+        except:
+            st.text("with exception")
         
 
 # Define main layout
@@ -180,6 +190,29 @@ chat_box = st.container()
 st.write("")
 prompt_box = st.empty()
 footer = st.container()
+
+# Load credentials from aws secret manager
+streamlit_secret = get_credentials()
+data_dict = json.loads(streamlit_secret)
+streamlit_username = data_dict['streamlit_username']
+streamlit_password = data_dict['streamlit_password']
+
+
+# Authentication UI
+if not st.session_state.authenticated:
+    st.subheader("Login")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type='password')
+
+    if st.button("Login"):
+        if username == streamlit_username and password == streamlit_password:
+            st.session_state.authenticated = True
+            st.success("Logged in successfully!")
+        else:
+            st.error("Invalid username or password")
+        st.rerun()
+
+
 
 # with footer:
 #     st.markdown("""
@@ -217,29 +250,32 @@ with chat_box:
 
 # Define an input box for human prompts
 with prompt_box:
-    human_prompt = st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
+    # If authenticated, show the initial prompt
+    if st.session_state.authenticated:
+        human_prompt = st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
 
 
 # Gate the subsequent chatbot response to only when the user has entered a prompt
-if len(human_prompt) > 0:
-    run_res = asyncio.run(main(human_prompt))
-    chat_history = get_chat_history()
-    formatted_chat_history = ""
-    for message in chat_history:
-        if message.role == "user":
-            formatted_chat_history += f"**You:** {message.content[0].text.value}\n" 
-            if st.session_state.initial_prompt == INITIAL_PROMPT:
-                st.session_state.initial_prompt = message.content[0].text.value
-        elif message.role == "assistant":
-            formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
-    st.session_state.chat_history = formatted_chat_history
-    if save_chat_history(st.session_state.thread_id, 
-                      selected_assistant, 
-                      st.session_state.initial_prompt, 
-                      st.session_state.chat_history):
-         st.session_state.chat_history_status = "Chat history saved"
-    else:
-        st.text("Failed to save Chat history")
-        st.session_state.chat_history_status = "Chat history NOT saved"
-    if run_res['status'] == 0: #i removed  "if run_res['status'] == 0 and not DEBUG"
-        st.rerun()
+if st.session_state.authenticated:
+    if len(human_prompt) > 0:
+        run_res = asyncio.run(main(human_prompt))
+        chat_history = get_chat_history()
+        formatted_chat_history = ""
+        for message in chat_history:
+            if message.role == "user":
+                formatted_chat_history += f"**You:** {message.content[0].text.value}\n" 
+                if st.session_state.initial_prompt == INITIAL_PROMPT:
+                    st.session_state.initial_prompt = message.content[0].text.value
+            elif message.role == "assistant":
+                formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
+        st.session_state.chat_history = formatted_chat_history
+        if save_chat_history(st.session_state.thread_id, 
+                        selected_assistant, 
+                        st.session_state.initial_prompt, 
+                        st.session_state.chat_history):
+            st.session_state.chat_history_status = "Chat history saved"
+        else:
+            st.text("Failed to save Chat history")
+            st.session_state.chat_history_status = "Chat history NOT saved"
+        if run_res['status'] == 0: #i removed  "if run_res['status'] == 0 and not DEBUG"
+            st.rerun()
