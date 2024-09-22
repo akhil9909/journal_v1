@@ -129,7 +129,7 @@ async def main(human_prompt: str) -> dict:
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
-    page_title="Journal V1 App",
+    page_title="Journal V2 App",
     layout="wide"
 )
 # Get available assistants (you'll need to implement this)
