@@ -2,9 +2,18 @@ import boto3
 import json
 import os
 from botocore.exceptions import ClientError
+import logging
 
 #aws_access_key_id = os.getenv('AWS_ACCESS_KEY')
 #aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+
+# Configure logging
+aws_error_log = []
+
+def aws_log_error(message):
+    aws_error_log.append(message)
+    logging.error(message)
+
 
 # Initialize a session using Amazon DynamoDB
 dynamodb = boto3.resource('dynamodb')
@@ -23,7 +32,7 @@ def save_chat_history(thread_id, assistant_id, user_prompt, chat_history):
         )
         return True  # Indicate success
     except Exception as e:
-        print(f"Error saving chat history: {e}")  # Log the error for debugging
+        aws_log_error(f"Error saving chat history: {e}")
         return False  # Indicate failure
     
 
@@ -33,12 +42,12 @@ def get_openai_api_key():
     region_name = "us-west-2"
 
     # Create a Secrets Manager client
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager'
-    )
-
     try:
+        session = boto3.session.Session()
+        client = session.client(
+            service_name='secretsmanager'
+        )
+
         get_secret_value_response = client.get_secret_value(
             SecretId=secret_name
         )
@@ -47,24 +56,34 @@ def get_openai_api_key():
         # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
         raise e
 
-    secret_data = get_secret_value_response['SecretString']
-    secret_dict = json.loads(secret_data)  # Parse the JSON string
-    openai_api_key_res = secret_dict['OPENAI_API_KEY'] 
+    try:
+        secret_data = get_secret_value_response['SecretString']
+    except KeyError:
+        aws_log_error("SecretString not found")
+        return None
+    
+    try:
+        secret_dict = json.loads(secret_data)  # Parse the JSON string
+        openai_api_key_res = secret_dict['OPENAI_API_KEY'] 
+    except json.JSONDecodeError as e:
+        aws_log_error(f"Error decoding JSON: {e}")
+        return None
+    
     return openai_api_key_res
 
 def get_credentials():
-
+    
     secret_name = "streamlit_credentials"
     region_name = "us-west-2"
 
     # Create a Secrets Manager client
-    session = boto3.session.Session()
-    client = session.client(
-        service_name='secretsmanager',
-        region_name=region_name
-    )
-
     try:
+        session = boto3.session.Session()
+        client = session.client(
+            service_name='secretsmanager',
+            region_name=region_name
+        )
+
         get_secret_value_response = client.get_secret_value(
             SecretId=secret_name
         )
@@ -72,6 +91,6 @@ def get_credentials():
         # For a list of exceptions thrown, see
         # https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_GetSecretValue.html
         raise e
-
+    
     secret = get_secret_value_response['SecretString']
     return secret

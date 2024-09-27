@@ -2,140 +2,28 @@ import streamlit as st
 import openai
 import os
 import json
-from functions import run_assistant, get_chat_history
-from awsfunc import save_chat_history, get_openai_api_key, get_credentials
+from functions import run_assistant, get_chat_history, get_chat_message
+from awsfunc import save_chat_history, get_openai_api_key, get_credentials,aws_error_log
+from cached_functions import get_css
 import base64
 import asyncio
+import time
+from main import main  # Import the main function
 
 # Get OpenAI API key from environment variable
 #openai.api_key = os.getenv("OPENAI_API_KEY")
 openai.api_key = get_openai_api_key()
 
-# Session state for login status
+#initialize Prompt
+INITIAL_PROMPT = "User prompt empty"
+
+# Initialize session states
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
-
-# Initialize thread
 if "thread_id" not in st.session_state:
     thread = openai.beta.threads.create()
     st.session_state.thread_id = thread.id
-
-#initialize root directory
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-INITIAL_PROMPT = "User prompt empty"
-
-
-### FUNCTION DEFINITIONS ###
-
-
-@st.cache_data(show_spinner=False)
-def get_local_img(file_path: str) -> str:
-    # Load a byte image and return its base64 encoded string
-    return base64.b64encode(open(file_path, "rb").read()).decode("utf-8")
-
-
-@st.cache_data(show_spinner=False)
-def get_favicon(file_path: str):
-    # Load a byte image and return its favicon
-    return Image.open(file_path)
-
-
-@st.cache_data(show_spinner=False)
-def get_css() -> str:
-    # Read CSS code from style.css file
-    with open(os.path.join(ROOT_DIR, "src", "style.css"), "r") as f:
-        return f"<style>{f.read()}</style>"
-
-
-def get_chat_message(
-    contents: str = "",
-    align: str = "left"
-) -> str:
-    # Formats the message in an chat fashion (user right, reply left)
-    div_class = "AI-line"
-    color = "rgb(240, 242, 246)"
-    file_path = os.path.join(ROOT_DIR, "src", "assets", "AI_icon.png")
-    src = f"data:image/gif;base64,{get_local_img(file_path)}"
-    if align == "right":
-        div_class = "human-line"
-        color = "rgb(165, 239, 127)"
-        if "USER" in st.session_state:
-            src = st.session_state.USER.avatar_url
-        else:
-            file_path = os.path.join(ROOT_DIR, "src", "assets", "user_icon.png")
-            src = f"data:image/gif;base64,{get_local_img(file_path)}"
-    icon_code = f"<img class='chat-icon' src='{src}' width=32 height=32 alt='avatar'>"
-    formatted_contents = f"""
-    <div class="{div_class}">
-        {icon_code}
-        <div class="chat-bubble" style="background: {color};">
-        &#8203;{contents}
-        </div>
-    </div>
-    """
-    return formatted_contents
-
-#main function starts here
-
-async def main(human_prompt: str) -> dict:
-    res = {'status': 0, 'message': "Success"}
-    try:
-
-        # Strip the prompt of any potentially harmful html/js injections
-        human_prompt = human_prompt.replace("<", "&lt;").replace(">", "&gt;")
-
-        # Update both chat log and the model memory
-        st.session_state.LOG.append(f"Human: {human_prompt}")
-        st.session_state.MEMORY.append({'role': "user", 'content': human_prompt})
-
-        # Clear the input box after human_prompt is used
-        prompt_box.empty()
-
-        with chat_box:
-            # Write the latest human message first
-            line = st.session_state.LOG[-1]
-            contents = line.split("Human: ")[1]
-            st.markdown(get_chat_message(contents, align="right"), unsafe_allow_html=True)
-
-            reply_box = st.empty()
-            # try unremoving this and see what visual thing it makes
-            reply_box.markdown(get_chat_message(), unsafe_allow_html=True)
-
-            # # This is one of those small three-dot animations to indicate the bot is "writing"
-            # writing_animation = st.empty()
-            # file_path = os.path.join(ROOT_DIR, "src", "assets", "loading.gif")
-            # writing_animation.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;<img src='data:image/gif;base64,{get_local_img(file_path)}' width=30 height=10>", unsafe_allow_html=True)
-
-            chatbot_response = await run_assistant(human_prompt, selected_assistant)
-
-            reply_box.markdown(get_chat_message(chatbot_response), unsafe_allow_html=True)
-
-            # Clear the writing animation
-            #writing_animation.empty()
-
-            # Update the chat log and the model memory
-            st.session_state.LOG.append(f"AI: {chatbot_response}")
-            st.session_state.MEMORY.append({'role': "assistant", 'content': chatbot_response})
-
-            res = {'status': 0, 'message': "Success"}
-
-    except:
-        res = {'status': 1, 'message': "Failure"}
-        return res
-    return res # work on it, later add debugging functionality to add details to response
-
-
-
-### MAIN STREAMLIT UI STARTS HERE ###
-st.set_page_config(
-    page_title="Journal V2 App",
-    layout="wide"
-)
-# Get available assistants (you'll need to implement this)
-assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "assistant_2_id"]  # Replace with your logic
-
-selected_assistant = st.selectbox("Select Assistant", assistants)
 
 if "initial_prompt" not in st.session_state:
     st.session_state.initial_prompt = INITIAL_PROMPT;
@@ -146,74 +34,148 @@ if "chat_history" not in st.session_state:
 if "chat_history_status" not in st.session_state:
     st.session_state.chat_history_status = "Chat history NOT saved"
 
+if "MEMORY" not in st.session_state:
+    st.session_state.MEMORY = [{'role': "system", 'content': INITIAL_PROMPT}]
+
+if "LOG" not in st.session_state:
+    st.session_state.LOG = [INITIAL_PROMPT]
+
+if "DEBUG" not in st.session_state:
+    st.session_state.DEBUG = False
+
+# Get query parameters
+try:
+    if st.query_params["DEBUG"].lower() == "true":
+        st.session_state.DEBUG = True
+except KeyError:
+    pass
+
+
+
+
+## Helper Functions
+
+def reset_session() -> dict:
+    res = {'status': 0, 'message': "Success"}
+    st.session_state.LOG = [INITIAL_PROMPT]
+    st.session_state.chat_history = ""
+    st.session_state.chat_history_status = "Chat history NOT saved"
+    st.session_state.MEMORY = [{'role': "system", 'content': INITIAL_PROMPT}]
+    try:
+        thread = openai.beta.threads.create()
+        st.session_state.thread_id = thread.id
+    except Exception as e:
+        res['status'] = 1
+        res['message'] = f"An error occurred in creating thread in reset session: {e}"
+        return res
+    return res
+    
+
+### MAIN STREAMLIT UI STARTS HERE ###
+st.set_page_config(
+    page_title="Journal V3 App",
+    layout="wide"
+)
+
+# Debug area
+if st.session_state.DEBUG:
+    with st.sidebar:
+        st.subheader("Debug area")
+        st.write(f"Thread ID: {st.session_state.thread_id}")
+        st.write(f"Initial Prompt: {st.session_state.initial_prompt}")
+        st.write(f"Chat History: {st.session_state.chat_history}")
+        st.write(f"Chat History Status: {st.session_state.chat_history_status}")
+        st.write(f"Memory: {st.session_state.MEMORY}")
+        st.write(f"Log: {st.session_state.LOG}")
+        st.write(f"Debug mode: {st.session_state.DEBUG}")
+        st.write(f"Authenticated: {st.session_state.authenticated}")
+        st.write(f"Username: {st.session_state.get('username', 'Not set')}")
+        st.write(f"Rerun: {st.session_state.get('rerun', False)}")  # Check if rerun flag is set
+        st.write(f"AWS error log: {aws_error_log}")
+
+# Get available assistants (you'll need to implement this)
+assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "assistant_2_id"]  # Replace with your logic
+
+selected_assistant = st.selectbox("Select Assistant", assistants)
+
 col1, col2 = st.columns(2)
 
 # Place buttons side by side
 with col1:
-    if st.button("save chat history"):
+    if st.button("save chat history") and st.session_state.authenticated:
         if st.session_state.chat_history_status == "Chat history saved":
-            st.text("Chat history auto saved")
+            st.success("Chat history auto saved")
         else:
             if st.session_state.chat_history == "":
-                st.text("No Chat History to Save")
+                st.warning("No Chat History to Save")
             elif save_chat_history(st.session_state.thread_id, 
                       selected_assistant, 
                       st.session_state.initial_prompt, 
                       st.session_state.chat_history):
-                st.text("Chat history saved")
+                st.success("Chat history saved")
             else:
-                st.text("Failed to save Chat history")
+                st.error("Failed to save Chat history")
+                if st.session_state.DEBUG:
+                    with st.sidebar:
+                        st.text("Failed at save Chat history button click"
+                                f"Error Log: {aws_error_log}")
+                
 
 with col2:
-    if st.button("New Session"):
-        try:
-            for key in st.session_state.keys():
-                del st.session_state[key]
-            #st.text("keys deleted")
-            prompt_box = st.empty()#... not working
-            #st.text("prompt empty")
-            chat_box = st.empty()#... not working
-            #st.text("chat empty")
-            st.session_state.authenticated = False
-            #trigger either main function again, or render chat history so far code block
-            st.text("new session initiated")
+    if st.button("New Session") and st.session_state.authenticated:
+        reset_ses_variable = reset_session()
+        if reset_ses_variable['status'] != 0:
+            st.error("Failed to reset session, please check debug mode")
+            if st.session_state.DEBUG:
+                with st.sidebar:
+                    st.text(f"Failed at New Session button click\nError Log: {reset_ses_variable['message']}")
+        else:
+            st.success("New session initiating")
+            time.sleep(1)  # sleep 1 second
             st.rerun()
-            
-        except:
-            st.text("with exception")
+    
+   
+   
         
 
 # Define main layout
-st.title("My Journal v1")
-st.subheader("")
+st.title("My Journal v3")
+st.write("This is a journaling app that uses OpenAI's GPT-3 to assist you in developing your strengths.")
 chat_box = st.container()
 st.write("")
 prompt_box = st.empty()
 footer = st.container()
 
-# Load credentials from aws secret manager
+# Load credentials from aws secret manager, no debug query parameter, directly raises the error in exception
 streamlit_secret = get_credentials()
 data_dict = json.loads(streamlit_secret)
 streamlit_username = data_dict['streamlit_username']
 streamlit_password = data_dict['streamlit_password']
 
+# Define login function
+def login():
+    username = st.session_state["username"]
+    password = st.session_state["password"]
+    if username == streamlit_username and password == streamlit_password:
+        st.session_state.authenticated = True
+        st.session_state.rerun = True  # Set rerun flag to True
+        st.success("Logged in successfully!")
+    else:
+        st.error("Invalid username or password")
+
+# Check for rerun flag and rerun the app
+if st.session_state.get('rerun', False):
+    st.session_state.rerun = False  # Reset rerun flag
+    st.rerun()  # Rerun the app outside the callback
+    
 
 # Authentication UI
 if not st.session_state.authenticated:
     st.subheader("Login")
-    username = st.text_input("Username")
-    password = st.text_input("Password", type='password')
-
-    if st.button("Login"):
-        if username == streamlit_username and password == streamlit_password:
-            st.session_state.authenticated = True
-            st.success("Logged in successfully!")
-        else:
-            st.error("Invalid username or password")
-        st.rerun()
-
-
-
+    st.text_input("Username", key="username")
+    st.text_input("Password", type="password", key="password", on_change=login)
+    st.button("Login", on_click=login)
+    
 # with footer:
 #     st.markdown("""
 #     <div align=right><small>
@@ -227,12 +189,6 @@ if not st.session_state.authenticated:
 # Load CSS code
 st.markdown(get_css(), unsafe_allow_html=True)
 
-
-# Initialize/maintain a chat log and chat memory in Streamlit's session state
-# Log is the actual line by line chat, while memory is limited by model's maximum token context length
-if "MEMORY" not in st.session_state:
-    st.session_state.MEMORY = [{'role': "system", 'content': INITIAL_PROMPT}]
-    st.session_state.LOG = [INITIAL_PROMPT]
 
 # Render chat history so far
 with chat_box:
@@ -258,24 +214,53 @@ with prompt_box:
 # Gate the subsequent chatbot response to only when the user has entered a prompt
 if st.session_state.authenticated:
     if len(human_prompt) > 0:
-        run_res = asyncio.run(main(human_prompt))
-        chat_history = get_chat_history()
-        formatted_chat_history = ""
-        for message in chat_history:
-            if message.role == "user":
-                formatted_chat_history += f"**You:** {message.content[0].text.value}\n" 
-                if st.session_state.initial_prompt == INITIAL_PROMPT:
-                    st.session_state.initial_prompt = message.content[0].text.value
-            elif message.role == "assistant":
-                formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
-        st.session_state.chat_history = formatted_chat_history
-        if save_chat_history(st.session_state.thread_id, 
-                        selected_assistant, 
-                        st.session_state.initial_prompt, 
-                        st.session_state.chat_history):
-            st.session_state.chat_history_status = "Chat history saved"
-        else:
-            st.text("Failed to save Chat history")
-            st.session_state.chat_history_status = "Chat history NOT saved"
-        if run_res['status'] == 0: #i removed  "if run_res['status'] == 0 and not DEBUG"
+        run_res = asyncio.run(main(human_prompt, selected_assistant))
+
+        #[placeholder 1] if the main function runs successfully, update the chat history before rerunning the app (to show the response in next iteration)
+        if run_res['status'] == 0 and not st.session_state.DEBUG: #i removed  "if run_res['status'] == 0 and not DEBUG"
+            
+            chat_history_dict = get_chat_history()
+            
+            if chat_history_dict['status'] == 0:
+                chat_history = chat_history_dict['message']
+                formatted_chat_history = ""
+                for message in chat_history:
+                    if message.role == "user":
+                        formatted_chat_history += f"**You:** {message.content[0].text.value}\n" 
+                        if st.session_state.initial_prompt == INITIAL_PROMPT:
+                            st.session_state.initial_prompt = message.content[0].text.value
+                    elif message.role == "assistant":
+                        formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
+                st.session_state.chat_history = formatted_chat_history
+                if save_chat_history(st.session_state.thread_id, 
+                                selected_assistant, 
+                                st.session_state.initial_prompt, 
+                                st.session_state.chat_history):
+                    st.session_state.chat_history_status = "Chat history saved"
+                else:
+                    st.session_state.chat_history_status = "Chat history NOT saved"
+                    st.error("Failed to save Chat history, use debug mode to see more details")
+                    #add debug code, show aws_error_log variable here
+            else:
+                st.error("Failed to save chat history, use debug mode to see more details")
+                #add debug code, use chat_history_dict['message'] to show error message
+                #Failed to get Chat history from openAI code in auto save module
+
             st.rerun()
+        else:
+            if run_res['status'] != 0:
+                st.error("Failed to run main function")
+                if st.session_state.DEBUG:
+                    with st.sidebar:
+                        st.text("Failed at main function run"
+                                f"Error Log: {run_res['message']}")
+            else:
+                st.error("Debug mode is on, please remove ?DEBUG=true from url")
+                
+                #chat history is not auto saved via code in debug mode, so addding a dummy message to chat history so it can be saved by click of chat history button
+                #to recreate the behaviour of auto chat histoy save, add code snippet belonging to [placeholder 1] here
+                st.session_state.chat_history = "dummy message"
+                
+                # Sleep for 2 seconds
+                time.sleep(2)
+                st.rerun()
