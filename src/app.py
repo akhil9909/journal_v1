@@ -140,7 +140,7 @@ with col2:
 
 # Define main layout
 st.title("My Journal v3")
-st.subheader("")
+st.write("This is a journaling app that uses OpenAI's GPT-3 to assist you in developing your strengths.")
 chat_box = st.container()
 st.write("")
 prompt_box = st.empty()

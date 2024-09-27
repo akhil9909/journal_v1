@@ -3,6 +3,9 @@ import asyncio
 import streamlit as st
 from functions import run_assistant, get_chat_history, get_chat_message
 from awsfunc import save_chat_history, get_openai_api_key, get_credentials
+import os
+from cached_functions import get_local_img, ROOT_DIR
+
 #main function starts here
 
 async def main(human_prompt: str, selected_assistant: str) -> dict:
@@ -36,10 +39,10 @@ async def main(human_prompt: str, selected_assistant: str) -> dict:
         # try unremoving this and see what visual thing it makes
         reply_box.markdown(get_chat_message(), unsafe_allow_html=True)
 
-        # # This is one of those small three-dot animations to indicate the bot is "writing"
-        # writing_animation = st.empty()
-        # file_path = os.path.join(ROOT_DIR, "src", "assets", "loading.gif")
-        # writing_animation.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;<img src='data:image/gif;base64,{get_local_img(file_path)}' width=30 height=10>", unsafe_allow_html=True)
+        # This is one of those small three-dot animations to indicate the bot is "writing"
+        writing_animation = st.empty()
+        file_path = os.path.join(ROOT_DIR, "src", "assets", "loading.gif")
+        writing_animation.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;<img src='data:image/gif;base64,{get_local_img(file_path)}' width=30 height=10>", unsafe_allow_html=True)
 
         chatbot_response_dict = await run_assistant(human_prompt, selected_assistant)
 
@@ -56,7 +59,7 @@ async def main(human_prompt: str, selected_assistant: str) -> dict:
         reply_box.markdown(get_chat_message(chatbot_response), unsafe_allow_html=True)
 
         # Clear the writing animation
-        #writing_animation.empty()
+        writing_animation.empty()
 
         # Update the chat log and the model memory
         st.session_state.LOG.append(f"AI: {chatbot_response}")
