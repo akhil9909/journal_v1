@@ -59,14 +59,14 @@ def get_openai_api_key():
     try:
         secret_data = get_secret_value_response['SecretString']
     except KeyError:
-        logging.error("SecretString not found")
+        aws_log_error("SecretString not found")
         return None
     
     try:
         secret_dict = json.loads(secret_data)  # Parse the JSON string
         openai_api_key_res = secret_dict['OPENAI_API_KEY'] 
     except json.JSONDecodeError as e:
-        logging.error(f"Error decoding JSON: {e}")
+        aws_log_error(f"Error decoding JSON: {e}")
         return None
     
     return openai_api_key_res

@@ -66,7 +66,7 @@ def reset_session() -> dict:
         st.session_state.thread_id = thread.id
     except Exception as e:
         res['status'] = 1
-        res['message'] = f"An error occurred: {e}"
+        res['message'] = f"An error occurred in creating thread in reset session: {e}"
         return res
     return res
     
@@ -81,6 +81,17 @@ st.set_page_config(
 if st.session_state.DEBUG:
     with st.sidebar:
         st.subheader("Debug area")
+        st.write(f"Thread ID: {st.session_state.thread_id}")
+        st.write(f"Initial Prompt: {st.session_state.initial_prompt}")
+        st.write(f"Chat History: {st.session_state.chat_history}")
+        st.write(f"Chat History Status: {st.session_state.chat_history_status}")
+        st.write(f"Memory: {st.session_state.MEMORY}")
+        st.write(f"Log: {st.session_state.LOG}")
+        st.write(f"Debug mode: {st.session_state.DEBUG}")
+        st.write(f"Authenticated: {st.session_state.authenticated}")
+        st.write(f"Username: {st.session_state.get('username', 'Not set')}")
+        st.write(f"Rerun: {st.session_state.get('rerun', False)}")  # Check if rerun flag is set
+        st.write(f"AWS error log: {aws_error_log}")
 
 # Get available assistants (you'll need to implement this)
 assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "assistant_2_id"]  # Replace with your logic
@@ -91,19 +102,19 @@ col1, col2 = st.columns(2)
 
 # Place buttons side by side
 with col1:
-    if st.button("save chat history"):
+    if st.button("save chat history") and st.session_state.authenticated:
         if st.session_state.chat_history_status == "Chat history saved":
-            st.text("Chat history auto saved")
+            st.success("Chat history auto saved")
         else:
             if st.session_state.chat_history == "":
-                st.text("No Chat History to Save")
+                st.warning("No Chat History to Save")
             elif save_chat_history(st.session_state.thread_id, 
                       selected_assistant, 
                       st.session_state.initial_prompt, 
                       st.session_state.chat_history):
-                st.text("Chat history saved")
+                st.success("Chat history saved")
             else:
-                st.text("Failed to save Chat history")
+                st.error("Failed to save Chat history")
                 if st.session_state.DEBUG:
                     with st.sidebar:
                         st.text("Failed at save Chat history button click"
@@ -111,16 +122,17 @@ with col1:
                 
 
 with col2:
-    if st.button("New Session"):
+    if st.button("New Session") and st.session_state.authenticated:
         reset_ses_variable = reset_session()
         if reset_ses_variable['status'] != 0:
-            st.text("Failed to reset session, please check debug mode")
+            st.error("Failed to reset session, please check debug mode")
             if st.session_state.DEBUG:
                 with st.sidebar:
-                    st.text("Failed at New Session button click"
-                            f"Error Log: {reset_ses_variable['message']}")
-        st.text("new session initiating")
-        st.rerun()
+                    st.text(f"Failed at New Session button click\nError Log: {reset_ses_variable['message']}")
+        else:
+            st.success("New session initiating")
+            time.sleep(1)  # sleep 1 second
+            st.rerun()
     
    
    
@@ -204,7 +216,7 @@ if st.session_state.authenticated:
     if len(human_prompt) > 0:
         run_res = asyncio.run(main(human_prompt, selected_assistant))
 
-        #if the main function runs successfully, update the chat history before rerunning the app (to show the response in next iteration)
+        #[placeholder 1] if the main function runs successfully, update the chat history before rerunning the app (to show the response in next iteration)
         if run_res['status'] == 0 and not st.session_state.DEBUG: #i removed  "if run_res['status'] == 0 and not DEBUG"
             
             chat_history_dict = get_chat_history()
@@ -244,6 +256,11 @@ if st.session_state.authenticated:
                                 f"Error Log: {run_res['message']}")
             else:
                 st.error("Debug mode is on, please remove ?DEBUG=true from url")
+                
+                #chat history is not auto saved via code in debug mode, so addding a dummy message to chat history so it can be saved by click of chat history button
+                #to recreate the behaviour of auto chat histoy save, add code snippet belonging to [placeholder 1] here
+                st.session_state.chat_history = "dummy message"
+                
                 # Sleep for 2 seconds
                 time.sleep(2)
                 st.rerun()

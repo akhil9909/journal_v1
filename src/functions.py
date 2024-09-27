@@ -59,7 +59,7 @@ async def run_assistant(prompt, assistant_id) -> dict:
     except Exception as e:
         log_error(f"Error in openai.beta.threads.runs.retrieve: {e}")
         res['status'] = 1
-        res['message'] = f"An error occurred: {e}\n\nError Log:\n{''.join(error_log)}"
+        res['message'] = f"An error occurred in retrieving thread runs: {e}\n\nError Log:\n{''.join(error_log)}"
         return res
 
 # Function to get chat history
@@ -74,7 +74,7 @@ def get_chat_history() -> dict:
     except Exception as e:
         log_error(f"Error in openai.beta.threads.messages.list: {e}")
         res['status'] = 1
-        res['message'] = f"An error occurred: {e}\n\nError Log:\n{''.join(error_log)}"
+        res['message'] = f"An error occurred in retrieving messages of thread from openai: {e}\n\nError Log:\n{''.join(error_log)}"
         return res
     
 # Function to format chat message
