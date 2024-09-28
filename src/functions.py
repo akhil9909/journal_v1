@@ -4,6 +4,7 @@ import streamlit as st
 import base64
 from cached_functions import get_local_img, ROOT_DIR
 import logging
+import html
 
 
 
@@ -82,6 +83,8 @@ def get_chat_message(
     contents: str = "",
     align: str = "left"
 ) -> str:
+    # Sanitize the content to escape any HTML-like characters from user input
+    contents = html.escape(contents).strip()  # Strip any newlines or excessive whitespace
     # Formats the message in an chat fashion (user right, reply left)
     div_class = "AI-line"
     color = "rgb(240, 242, 246)"
