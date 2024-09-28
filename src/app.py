@@ -208,7 +208,7 @@ with chat_box:
 with prompt_box:
     # If authenticated, show the initial prompt
     if st.session_state.authenticated:
-        human_prompt = st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
+        human_prompt = st.text_area("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}", height=150)
 
 
 # Gate the subsequent chatbot response to only when the user has entered a prompt
