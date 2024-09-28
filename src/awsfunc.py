@@ -10,6 +10,17 @@ import logging
 # Configure logging
 aws_error_log = []
 
+# Get the name of the DynamoDB table
+def get_dynamodb_table_name():
+    try:
+        # Attempt to fetch the table name from environment variables (for production)
+        table_name = os.environ['DYNAMODB_TABLE']
+        return table_name
+    except KeyError:
+        # If the environment variable is not set, default to a static name (for development)
+        return 'streamlit_backend'
+
+
 def aws_log_error(message):
     aws_error_log.append(message)
     logging.error(message)
@@ -21,7 +32,8 @@ dynamodb = boto3.resource('dynamodb')
 # Insert a new item or update an existing item
 def save_chat_history(thread_id, assistant_id, user_prompt, chat_history):
     try:
-        table = dynamodb.Table('streamlit_backend')
+        table_name = get_dynamodb_table_name()
+        table = dynamodb.Table(table_name)
         table.put_item(
             Item={
                 'thread_id': thread_id,
