@@ -25,48 +25,31 @@ async def main(human_prompt: str, selected_assistant: str) -> dict:
     # Update both chat log and the model memory
     st.session_state.LOG.append(f"Human: {human_prompt}")
     st.session_state.MEMORY.append({'role': "user", 'content': human_prompt})
+    
+    writing_animation = st.empty()
+    file_path = os.path.join(ROOT_DIR, "src", "assets", "loading.gif")
+    writing_animation.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;<img src='data:image/gif;base64,{get_local_img(file_path)}' width=30 height=10>", unsafe_allow_html=True)
 
-    # Clear the input box after human_prompt is used
-    prompt_box.empty()
+    chatbot_response_dict = await run_assistant(human_prompt, selected_assistant)
 
-    with chat_box:
-        # Write the latest human message first
-        line = st.session_state.LOG[-1]
-        contents = line.split("Human: ")[1]
-        st.markdown(get_chat_message(contents, align="right"), unsafe_allow_html=True)
+    # Check if the call was successful
+    if chatbot_response_dict['status'] == 0:
+        chatbot_response = chatbot_response_dict['message']
+        msg = "Success"
+    else:
+        chatbot_response = "error, please use debug mode to see more details"
+        msg = f"Error: {chatbot_response_dict['message']}"
+        return {'status': 1, 'message': msg}
 
-        reply_box = st.empty()
-        # try unremoving this and see what visual thing it makes
-        reply_box.markdown(get_chat_message(), unsafe_allow_html=True)
+    # Clear the writing animation
+    writing_animation.empty()
 
-        # This is one of those small three-dot animations to indicate the bot is "writing"
-        writing_animation = st.empty()
-        file_path = os.path.join(ROOT_DIR, "src", "assets", "loading.gif")
-        writing_animation.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;<img src='data:image/gif;base64,{get_local_img(file_path)}' width=30 height=10>", unsafe_allow_html=True)
+    # Update the chat log and the model memory
+    st.session_state.LOG.append(f"AI: {chatbot_response}")
+    st.session_state.MEMORY.append({'role': "assistant", 'content': chatbot_response})
 
-        chatbot_response_dict = await run_assistant(human_prompt, selected_assistant)
-
-        # Check if the call was successful
-        if chatbot_response_dict['status'] == 0:
-            chatbot_response = chatbot_response_dict['message']
-            msg = "Success"
-        else:
-            chatbot_response = "error, please use debug mode to see more details"
-            msg = f"Error: {chatbot_response_dict['message']}"
-            return {'status': 1, 'message': msg}
-
-        # Update the chat box with the chatbot response
-        reply_box.markdown(get_chat_message(chatbot_response), unsafe_allow_html=True)
-
-        # Clear the writing animation
-        writing_animation.empty()
-
-        # Update the chat log and the model memory
-        st.session_state.LOG.append(f"AI: {chatbot_response}")
-        st.session_state.MEMORY.append({'role': "assistant", 'content': chatbot_response})
-
-        res = {'status': chatbot_response_dict['status'], 'message': msg}
-
+    res = {'status': chatbot_response_dict['status'], 'message': msg}
+    st.session_state.main_called_once = True # so that next time the UI display a text_input box instead of text_area
     #time.sleep(5) # check to see behaviour of rendering user input and bot response before exiting the function
     return res # work on it, later add debugging functionality to add details to response
 

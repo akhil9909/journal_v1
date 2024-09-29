@@ -43,6 +43,9 @@ if "LOG" not in st.session_state:
 if "DEBUG" not in st.session_state:
     st.session_state.DEBUG = False
 
+if "main_called_once" not in st.session_state:
+    st.session_state.main_called_once = False
+
 # Get query parameters
 try:
     if st.query_params["DEBUG"].lower() == "true":
@@ -61,6 +64,7 @@ def reset_session() -> dict:
     st.session_state.chat_history = ""
     st.session_state.chat_history_status = "Chat history NOT saved"
     st.session_state.MEMORY = [{'role': "system", 'content': INITIAL_PROMPT}]
+    st.session_state.main_called_once = False
     try:
         thread = openai.beta.threads.create()
         st.session_state.thread_id = thread.id
@@ -208,7 +212,10 @@ with chat_box:
 with prompt_box:
     # If authenticated, show the initial prompt
     if st.session_state.authenticated:
-        human_prompt = st.text_area("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}", height=150)
+        if not st.session_state.main_called_once:
+            human_prompt = st.text_area("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}", height=150)
+        else:
+            human_prompt =  st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
 
 if st.session_state.authenticated:
     run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}")
@@ -219,7 +226,7 @@ if st.session_state.authenticated:
         run_res = asyncio.run(main(human_prompt, selected_assistant))
 
         #[placeholder 1] if the main function runs successfully, update the chat history before rerunning the app (to show the response in next iteration)
-        if run_res['status'] == 0 and not st.session_state.DEBUG: #i removed  "if run_res['status'] == 0 and not DEBUG"
+        if run_res['status'] == 0 and not st.session_state.DEBUG: 
             
             chat_history_dict = get_chat_history()
             
