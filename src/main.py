@@ -67,6 +67,7 @@ async def main(human_prompt: str, selected_assistant: str) -> dict:
 
         res = {'status': chatbot_response_dict['status'], 'message': msg}
 
+    #time.sleep(5) # check to see behaviour of rendering user input and bot response before exiting the function
     return res # work on it, later add debugging functionality to add details to response
 
 
