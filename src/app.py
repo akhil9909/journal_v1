@@ -210,10 +210,12 @@ with prompt_box:
     if st.session_state.authenticated:
         human_prompt = st.text_area("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}", height=150)
 
+if st.session_state.authenticated:
+    run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}")
 
 # Gate the subsequent chatbot response to only when the user has entered a prompt
 if st.session_state.authenticated:
-    if len(human_prompt) > 0:
+    if (len(human_prompt) > 0 or run_button) and len(human_prompt) > 0:
         run_res = asyncio.run(main(human_prompt, selected_assistant))
 
         #[placeholder 1] if the main function runs successfully, update the chat history before rerunning the app (to show the response in next iteration)
