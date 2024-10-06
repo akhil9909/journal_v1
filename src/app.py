@@ -9,6 +9,7 @@ import base64
 import asyncio
 import time
 from main import main  # Import the main function
+from helper import helpers  # Import the helpers
 
 # Get OpenAI API key from environment variable
 #openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -46,6 +47,14 @@ if "DEBUG" not in st.session_state:
 if "main_called_once" not in st.session_state:
     st.session_state.main_called_once = False
 
+if "input_text" not in st.session_state:
+    st.session_state.input_text = ""
+
+if "button_length" not in st.session_state:
+    st.session_state.button_length = 0
+
+    
+
 # Get query parameters
 try:
     if st.query_params["DEBUG"].lower() == "true":
@@ -65,6 +74,8 @@ def reset_session() -> dict:
     st.session_state.chat_history_status = "Chat history NOT saved"
     st.session_state.MEMORY = [{'role': "system", 'content': INITIAL_PROMPT}]
     st.session_state.main_called_once = False
+    st.session_state.input_text = ""
+    st.session_state.button_length = 0
     try:
         thread = openai.beta.threads.create()
         st.session_state.thread_id = thread.id
@@ -74,6 +85,12 @@ def reset_session() -> dict:
         return res
     return res
     
+# Function to add helper text to the textarea
+# def add_helper_text(helper):
+#     st.session_state.button_length = len(helper)
+#     st.session_state.input_text = helper
+    
+
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
@@ -90,6 +107,9 @@ if st.session_state.DEBUG:
         st.write(f"Chat History: {st.session_state.chat_history}")
         st.write(f"Chat History Status: {st.session_state.chat_history_status}")
         st.write(f"Memory: {st.session_state.MEMORY}")
+        st.write(f"Input Text: {st.session_state.input_text}")
+        st.write(f"Button Length: {st.session_state.button_length}")
+        st.write(f"main_called_once: {st.session_state.main_called_once}")
         st.write(f"Log: {st.session_state.LOG}")
         st.write(f"Debug mode: {st.session_state.DEBUG}")
         st.write(f"Authenticated: {st.session_state.authenticated}")
@@ -98,7 +118,7 @@ if st.session_state.DEBUG:
         st.write(f"AWS error log: {aws_error_log}")
 
 # Get available assistants (you'll need to implement this)
-assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "assistant_2_id"]  # Replace with your logic
+assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant"]  # Replace with your logic
 
 selected_assistant = st.selectbox("Select Assistant", assistants)
 
@@ -147,6 +167,7 @@ st.title("My Journal v3")
 st.write("This is a journaling app that uses OpenAI's GPT-3 to assist you in developing your strengths.")
 chat_box = st.container()
 st.write("")
+hint_box = st.container()
 prompt_box = st.empty()
 footer = st.container()
 
@@ -207,22 +228,42 @@ with chat_box:
             contents = line.split("Human: ")[1]
             st.markdown(get_chat_message(contents, align="right"), unsafe_allow_html=True)
 
+#add helpers
+with hint_box:
+    if st.session_state.authenticated:
+            if not st.session_state.main_called_once:
+                st.write('*********Hints to get started***********')
+                cols = st.columns(4)
+                for i, helper in enumerate(helpers):
+                    col = cols[i % 4]  # Rotate through the 4 columns
+                    with col:
+                        if st.button(helper):
+                            st.session_state.button_length = len(helper)
+                            st.session_state.input_text = helper
+                        
+
+
 
 # Define an input box for human prompts
 with prompt_box:
     # If authenticated, show the initial prompt
     if st.session_state.authenticated:
         if not st.session_state.main_called_once:
-            human_prompt = st.text_area("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}", height=150)
+            human_prompt = st.text_area("You: ", value=st.session_state.input_text, key="input_text", height=150)
         else:
             human_prompt =  st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
+            
 
 if st.session_state.authenticated:
     run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}")
 
+if st.session_state.main_called_once:
+    hint_box.empty()
+
+
 # Gate the subsequent chatbot response to only when the user has entered a prompt
 if st.session_state.authenticated:
-    if (len(human_prompt) > 0 or run_button) and len(human_prompt) > 0:
+    if (len(human_prompt) > st.session_state.button_length or run_button): #[pass empty input text why? and len(human_prompt) > st.session_state.button_length #this will have a bug that if a user deadclicks the send button on empty (or helped button clicked but no details enter), the main function will be called
         run_res = asyncio.run(main(human_prompt, selected_assistant))
 
         #[placeholder 1] if the main function runs successfully, update the chat history before rerunning the app (to show the response in next iteration)
