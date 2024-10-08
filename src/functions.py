@@ -5,6 +5,8 @@ import base64
 from cached_functions import get_local_img, ROOT_DIR
 import logging
 import html
+from awsfunc import save_chat_history, aws_error_log
+import time
 
 
 
@@ -108,3 +110,54 @@ def get_chat_message(
     </div>
     """
     return formatted_contents
+
+# Function to auto save chat history
+
+def auto_save_chat_history(run_res, selected_assistant,INITIAL_PROMPT):
+    if run_res['status'] == 0 and not st.session_state.DEBUG:
+            
+            chat_history_dict = get_chat_history()
+            
+            if chat_history_dict['status'] == 0:
+                chat_history = chat_history_dict['message']
+                formatted_chat_history = ""
+                for message in chat_history:
+                    if message.role == "user":
+                        formatted_chat_history += f"**You:** {message.content[0].text.value}\n" 
+                        if st.session_state.initial_prompt == INITIAL_PROMPT:
+                            st.session_state.initial_prompt = message.content[0].text.value
+                    elif message.role == "assistant":
+                        formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
+                st.session_state.chat_history = formatted_chat_history
+                if save_chat_history(st.session_state.thread_id, 
+                                selected_assistant, 
+                                st.session_state.initial_prompt, 
+                                st.session_state.chat_history):
+                    st.session_state.chat_history_status = "Chat history saved"
+                else:
+                    st.session_state.chat_history_status = "Chat history NOT saved"
+                    st.error("Failed to save Chat history, use debug mode to see more details")
+                    #add debug code, show aws_error_log variable here
+            else:
+                st.error("Failed to save chat history, use debug mode to see more details")
+                #add debug code, use chat_history_dict['message'] to show error message
+                #Failed to get Chat history from openAI code in auto save module
+
+            st.rerun()
+    else:
+            if run_res['status'] != 0:
+                st.error("Failed to run main function")
+                if st.session_state.DEBUG:
+                    with st.sidebar:
+                        st.text("Failed at main function run"
+                                f"Error Log: {run_res['message']}")
+            else:
+                st.error("Debug mode is on, please remove ?DEBUG=true from url")
+                
+                #chat history is not auto saved via code in debug mode, so addding a dummy message to chat history so it can be saved by click of chat history button
+                #to recreate the behaviour of auto chat histoy save, add code snippet belonging to [placeholder 1] here
+                st.session_state.chat_history = "dummy message"
+                
+                # Sleep for 2 seconds
+                time.sleep(2)
+                st.rerun()
