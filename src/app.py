@@ -2,13 +2,14 @@ import streamlit as st
 import openai
 import os
 import json
-from functions import run_assistant, get_chat_history, get_chat_message
+from functions import run_assistant, get_chat_history, get_chat_message, auto_save_chat_history
 from awsfunc import save_chat_history, get_openai_api_key, get_credentials,aws_error_log
 from cached_functions import get_css
 import base64
 import asyncio
 import time
 from main import main  # Import the main function
+from helper import helpers  # Import the helpers
 
 # Get OpenAI API key from environment variable
 #openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -46,6 +47,13 @@ if "DEBUG" not in st.session_state:
 if "main_called_once" not in st.session_state:
     st.session_state.main_called_once = False
 
+if "input_text" not in st.session_state:
+    st.session_state.input_text = ""
+
+if "rerun_trigger_for_updating_session_state" not in st.session_state:
+    st.session_state.rerun_trigger_for_updating_session_state = True
+    
+
 # Get query parameters
 try:
     if st.query_params["DEBUG"].lower() == "true":
@@ -65,6 +73,7 @@ def reset_session() -> dict:
     st.session_state.chat_history_status = "Chat history NOT saved"
     st.session_state.MEMORY = [{'role': "system", 'content': INITIAL_PROMPT}]
     st.session_state.main_called_once = False
+    st.session_state.input_text = ""
     try:
         thread = openai.beta.threads.create()
         st.session_state.thread_id = thread.id
@@ -74,6 +83,11 @@ def reset_session() -> dict:
         return res
     return res
     
+# Function to add helper text to the textarea
+def add_helper_text(helper):
+    st.session_state.input_text += " " + helper
+    
+
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
@@ -90,6 +104,8 @@ if st.session_state.DEBUG:
         st.write(f"Chat History: {st.session_state.chat_history}")
         st.write(f"Chat History Status: {st.session_state.chat_history_status}")
         st.write(f"Memory: {st.session_state.MEMORY}")
+        st.write(f"Input Text: {st.session_state.input_text}")
+        st.write(f"main_called_once: {st.session_state.main_called_once}")
         st.write(f"Log: {st.session_state.LOG}")
         st.write(f"Debug mode: {st.session_state.DEBUG}")
         st.write(f"Authenticated: {st.session_state.authenticated}")
@@ -98,7 +114,7 @@ if st.session_state.DEBUG:
         st.write(f"AWS error log: {aws_error_log}")
 
 # Get available assistants (you'll need to implement this)
-assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "assistant_2_id"]  # Replace with your logic
+assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant"]  # Replace with your logic
 
 selected_assistant = st.selectbox("Select Assistant", assistants)
 
@@ -147,6 +163,7 @@ st.title("My Journal v3")
 st.write("This is a journaling app that uses OpenAI's GPT-3 to assist you in developing your strengths.")
 chat_box = st.container()
 st.write("")
+hint_box = st.container()
 prompt_box = st.empty()
 footer = st.container()
 
@@ -207,69 +224,50 @@ with chat_box:
             contents = line.split("Human: ")[1]
             st.markdown(get_chat_message(contents, align="right"), unsafe_allow_html=True)
 
+#add helpers
+with hint_box:
+    if st.session_state.authenticated:
+            if not st.session_state.main_called_once:
+                st.write('*********Hints to get started***********')
+                cols = st.columns(4)
+                for i, helper in enumerate(helpers):
+                    col = cols[i % 4]  # Rotate through the 4 columns
+                    with col:
+                        if st.button(helper):
+                            add_helper_text(helper)
+                        
+
+
 
 # Define an input box for human prompts
 with prompt_box:
     # If authenticated, show the initial prompt
     if st.session_state.authenticated:
         if not st.session_state.main_called_once:
-            human_prompt = st.text_area("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}", height=150)
+            human_prompt = st.text_area("You: ", value=st.session_state.input_text, height=150) 
+            ## BUGALERT i was earlier assigning the key of text_area above as also the session_state = input_text. This was creating a bug where session state was not geting pdated immediately on run click
         else:
             human_prompt =  st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
 
 if st.session_state.authenticated:
     run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}")
 
+if st.session_state.main_called_once:
+    hint_box.empty()
+
+# Update the session state with user input from the text area
+        #st.session_state.input_text = human_prompt
+
 # Gate the subsequent chatbot response to only when the user has entered a prompt
 if st.session_state.authenticated:
-    if (len(human_prompt) > 0 or run_button) and len(human_prompt) > 0:
+    if(run_button) and len(human_prompt) > 0:
         run_res = asyncio.run(main(human_prompt, selected_assistant))
+        #update chat history and rerun the app
+        auto_save_chat_history(run_res, selected_assistant, INITIAL_PROMPT)
+        
 
-        #[placeholder 1] if the main function runs successfully, update the chat history before rerunning the app (to show the response in next iteration)
-        if run_res['status'] == 0 and not st.session_state.DEBUG: 
-            
-            chat_history_dict = get_chat_history()
-            
-            if chat_history_dict['status'] == 0:
-                chat_history = chat_history_dict['message']
-                formatted_chat_history = ""
-                for message in chat_history:
-                    if message.role == "user":
-                        formatted_chat_history += f"**You:** {message.content[0].text.value}\n" 
-                        if st.session_state.initial_prompt == INITIAL_PROMPT:
-                            st.session_state.initial_prompt = message.content[0].text.value
-                    elif message.role == "assistant":
-                        formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
-                st.session_state.chat_history = formatted_chat_history
-                if save_chat_history(st.session_state.thread_id, 
-                                selected_assistant, 
-                                st.session_state.initial_prompt, 
-                                st.session_state.chat_history):
-                    st.session_state.chat_history_status = "Chat history saved"
-                else:
-                    st.session_state.chat_history_status = "Chat history NOT saved"
-                    st.error("Failed to save Chat history, use debug mode to see more details")
-                    #add debug code, show aws_error_log variable here
-            else:
-                st.error("Failed to save chat history, use debug mode to see more details")
-                #add debug code, use chat_history_dict['message'] to show error message
-                #Failed to get Chat history from openAI code in auto save module
-
-            st.rerun()
-        else:
-            if run_res['status'] != 0:
-                st.error("Failed to run main function")
-                if st.session_state.DEBUG:
-                    with st.sidebar:
-                        st.text("Failed at main function run"
-                                f"Error Log: {run_res['message']}")
-            else:
-                st.error("Debug mode is on, please remove ?DEBUG=true from url")
-                
-                #chat history is not auto saved via code in debug mode, so addding a dummy message to chat history so it can be saved by click of chat history button
-                #to recreate the behaviour of auto chat histoy save, add code snippet belonging to [placeholder 1] here
-                st.session_state.chat_history = "dummy message"
-                
-                # Sleep for 2 seconds
-                time.sleep(2)
-                st.rerun()
+    if st.session_state.main_called_once:
+        if(len(human_prompt) > 0):
+            run_res = asyncio.run(main(human_prompt, selected_assistant))
+            #update chat history and rerun the app
+            auto_save_chat_history(run_res, selected_assistant, INITIAL_PROMPT)

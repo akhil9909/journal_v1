@@ -30,6 +30,15 @@ async def main(human_prompt: str, selected_assistant: str) -> dict:
     file_path = os.path.join(ROOT_DIR, "src", "assets", "loading.gif")
     writing_animation.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;<img src='data:image/gif;base64,{get_local_img(file_path)}' width=30 height=10>", unsafe_allow_html=True)
 
+    if selected_assistant == "No Assistant":
+        # Clear the writing animation
+        writing_animation.empty()
+        # Update the chat log and the model memory
+        st.session_state.LOG.append(f"AI: No assistant selected to run.")
+        st.session_state.MEMORY.append({'role': "assistant", 'content': "No assistant selected to run."})
+        st.session_state.main_called_once = True # so that next time the UI display a text_input box instead of text_area
+        return {'status': 0, 'message': "Success"}
+
     chatbot_response_dict = await run_assistant(human_prompt, selected_assistant)
 
     # Check if the call was successful
