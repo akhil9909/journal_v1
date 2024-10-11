@@ -1,0 +1,65 @@
+section1:
+  expander1:
+    expander_title: "Expander 1"
+    row1:
+      no_of_cols: 2
+      col1:
+        type: "text_input"
+        label: "Input 1" 
+      col2:
+        type: "text_area"
+        label: "Area 1"
+    row2:
+      no_of_cols: 1
+      col1:
+        type: "text_input"
+        label: "Input 2"
+
+  expander2:
+    expander_title: "Expander 2"
+    row1:
+      no_of_cols: 2
+      col1:
+        type: "text_input"
+        label: "Input 3" 
+      col2:
+        type: "text_area"
+        label: "Area 3"
+    row2:
+      no_of_cols: 1
+      col1:
+        type: "text_input"
+        label: "Input 4"
+
+section2:
+  expander1:
+    expander_title: "Expander 3"
+    row1:
+      no_of_cols: 2
+      col1:
+        type: "text_input"
+        label: "Input 2.1" 
+      col2:
+        type: "text_area"
+        label: "Area 2.1"
+    row2:
+      no_of_cols: 1
+      col1:
+        type: "text_input"
+        label: "Input 2.2"
+
+  expander2:
+    expander_title: "Expander 4"
+    row1:
+      no_of_cols: 2
+      col1:
+        type: "text_input"
+        label: "Input 2.3" 
+      col2:
+        type: "text_area"
+        label: "Area 2.3"
+    row2:
+      no_of_cols: 1
+      col1:
+        type: "text_input"
+        label: "Input 2.4"
