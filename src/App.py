@@ -114,7 +114,7 @@ if st.session_state.DEBUG:
         st.write(f"AWS error log: {aws_error_log}")
 
 # Get available assistants (you'll need to implement this)
-assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant"]  # Replace with your logic
+assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
 
 selected_assistant = st.selectbox("Select Assistant", assistants)
 
