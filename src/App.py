@@ -277,7 +277,7 @@ with feedback_box:
         if st.button("feedback") and not st.session_state.feedback_provided:
             Feedback()
         elif st.session_state.feedback_provided and st.button("edit your feedback"):
-                Feedback()
+            Feedback()
 
 # Define an input box for human prompts
 with prompt_box:
