@@ -53,6 +53,11 @@ if "input_text" not in st.session_state:
 if "rerun_trigger_for_updating_session_state" not in st.session_state:
     st.session_state.rerun_trigger_for_updating_session_state = True
     
+if "feedback" not in st.session_state:
+    st.session_state.feedback = ""
+
+if "other_feedback" not in st.session_state:
+    st.session_state.other_feedback = ""
 
 # Get query parameters
 try:
@@ -87,7 +92,16 @@ def reset_session() -> dict:
 def add_helper_text(helper):
     st.session_state.input_text += " " + helper
     
-
+#pop up to get the user feedback (st.dialog)
+@st.dialog("Provide your feedback on the response")
+def Feedback():
+    st.write(f"Please Provide your feedback on the response")
+    reason = st.multiselect("", ["useful", "too vague", "verbose", "offensive", "like it", "off-topic", "need more details"])
+    other_feedback = st.text_input("Other Feedback")
+    if st.button("Submit"):
+        st.session_state.feedback = reason
+        st.session_state.other_feedback = other_feedback
+        st.rerun()
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
@@ -112,6 +126,8 @@ if st.session_state.DEBUG:
         st.write(f"Username: {st.session_state.get('username', 'Not set')}")
         st.write(f"Rerun: {st.session_state.get('rerun', False)}")  # Check if rerun flag is set
         st.write(f"AWS error log: {aws_error_log}")
+        st.write(f"Feedback: {st.session_state.feedback}")
+        st.write(f"Other Feedback: {st.session_state.other_feedback}")
 
 # Get available assistants (you'll need to implement this)
 assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
@@ -164,6 +180,7 @@ st.write("This is a journaling app that uses OpenAI's GPT-3 to assist you in dev
 chat_box = st.container()
 st.write("")
 hint_box = st.container()
+feedback_box = st.empty()
 prompt_box = st.empty()
 footer = st.container()
 
@@ -236,8 +253,10 @@ with hint_box:
                         if st.button(helper):
                             add_helper_text(helper)
                         
-
-
+with feedback_box:
+    if st.session_state.authenticated and st.session_state.main_called_once:
+        if st.button("feedback"):
+            Feedback()
 
 # Define an input box for human prompts
 with prompt_box:
@@ -264,6 +283,9 @@ if st.session_state.authenticated:
         run_res = asyncio.run(main(human_prompt, selected_assistant))
         #update chat history and rerun the app
         auto_save_chat_history(run_res, selected_assistant, INITIAL_PROMPT)
+        #feedback dropdown, this doesnt work here, render it in the chat history or app.py
+        #you have issue where to add the new UI element in the current flow, work on it
+        #add feedbakc with send button, or before using the 2 cols
         
 
     if st.session_state.main_called_once:
