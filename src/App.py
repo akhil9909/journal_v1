@@ -3,7 +3,7 @@ import openai
 import os
 import json
 from functions import run_assistant, get_chat_history, get_chat_message, auto_save_chat_history
-from awsfunc import save_chat_history, get_openai_api_key, get_credentials,aws_error_log
+from awsfunc import save_chat_history, get_openai_api_key, get_credentials,save_feedback,aws_error_log
 from cached_functions import get_css
 import base64
 import asyncio
@@ -59,6 +59,15 @@ if "feedback" not in st.session_state:
 if "other_feedback" not in st.session_state:
     st.session_state.other_feedback = ""
 
+if "feedback_provided" not in st.session_state:
+    st.session_state.feedback_provided = False
+
+if "chatbot_response" not in st.session_state:
+    st.session_state.chatbot_response = ""
+
+if "assistant" not in st.session_state:
+    st.session_state.assistant = ""
+
 # Get query parameters
 try:
     if st.query_params["DEBUG"].lower() == "true":
@@ -96,11 +105,19 @@ def add_helper_text(helper):
 @st.dialog("Provide your feedback on the response")
 def Feedback():
     st.write(f"Please Provide your feedback on the response")
-    reason = st.multiselect("", ["useful", "too vague", "verbose", "offensive", "like it", "off-topic", "need more details"])
-    other_feedback = st.text_input("Other Feedback")
+    if st.session_state.feedback_provided:
+        reason = st.multiselect("", ["useful", "too vague", "verbose", "offensive", "like it", "off-topic", "need more details"], default=st.session_state.feedback)
+        other_feedback = st.text_input("Other Feedback", value=st.session_state.other_feedback)
+    else:
+        reason = st.multiselect("", ["useful", "too vague", "verbose", "offensive", "like it", "off-topic", "need more details"])
+        other_feedback = st.text_input("Other Feedback")    
     if st.button("Submit"):
         st.session_state.feedback = reason
         st.session_state.other_feedback = other_feedback
+        st.session_state.feedback_provided = True
+        st.success("Feedback submitted successfully")
+        save_feedback(st.session_state.thread_id, st.session_state.assistant, st.session_state.chatbot_response, st.session_state.feedback,st.session_state.other_feedback)
+        time.sleep(1)  # sleep 1 second
         st.rerun()
 
 ### MAIN STREAMLIT UI STARTS HERE ###
@@ -113,6 +130,7 @@ st.set_page_config(
 if st.session_state.DEBUG:
     with st.sidebar:
         st.subheader("Debug area")
+        st.write(f"Assistant: {st.session_state.assistant}")
         st.write(f"Thread ID: {st.session_state.thread_id}")
         st.write(f"Initial Prompt: {st.session_state.initial_prompt}")
         st.write(f"Chat History: {st.session_state.chat_history}")
@@ -133,6 +151,7 @@ if st.session_state.DEBUG:
 assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
 
 selected_assistant = st.selectbox("Select Assistant", assistants)
+st.session_state.assistant = selected_assistant
 
 col1, col2 = st.columns(2)
 
@@ -145,7 +164,7 @@ with col1:
             if st.session_state.chat_history == "":
                 st.warning("No Chat History to Save")
             elif save_chat_history(st.session_state.thread_id, 
-                      selected_assistant, 
+                      st.session_state.assistant, 
                       st.session_state.initial_prompt, 
                       st.session_state.chat_history):
                 st.success("Chat history saved")
@@ -255,8 +274,10 @@ with hint_box:
                         
 with feedback_box:
     if st.session_state.authenticated and st.session_state.main_called_once:
-        if st.button("feedback"):
+        if st.button("feedback") and not st.session_state.feedback_provided:
             Feedback()
+        elif st.session_state.feedback_provided and st.button("edit your feedback"):
+                Feedback()
 
 # Define an input box for human prompts
 with prompt_box:
@@ -280,16 +301,19 @@ if st.session_state.main_called_once:
 # Gate the subsequent chatbot response to only when the user has entered a prompt
 if st.session_state.authenticated:
     if(run_button) and len(human_prompt) > 0:
-        run_res = asyncio.run(main(human_prompt, selected_assistant))
+        run_res = asyncio.run(main(human_prompt, st.session_state.assistant))
         #update chat history and rerun the app
-        auto_save_chat_history(run_res, selected_assistant, INITIAL_PROMPT)
-        #feedback dropdown, this doesnt work here, render it in the chat history or app.py
-        #you have issue where to add the new UI element in the current flow, work on it
-        #add feedbakc with send button, or before using the 2 cols
+        auto_save_chat_history(run_res, st.session_state.assistant, INITIAL_PROMPT,False)
+        #note that INITIAL_PROMPT is the a dummy value, its passed to the auto_save_chat_history function to check if the user has entered a prompt or not
+        #if the user has entered a prompt, the auto_save_chat_history function will call save_chat_history function with session state log which has user prompt
+
         
 
     if st.session_state.main_called_once:
         if(len(human_prompt) > 0):
-            run_res = asyncio.run(main(human_prompt, selected_assistant))
+            st.session_state.feedback_provided = False
+            run_res = asyncio.run(main(human_prompt, st.session_state.assistant))
             #update chat history and rerun the app
-            auto_save_chat_history(run_res, selected_assistant, INITIAL_PROMPT)
+            auto_save_chat_history(run_res, st.session_state.assistant, INITIAL_PROMPT,True)
+            #note that INITIAL_PROMPT is the a dummy value, its passed to the auto_save_chat_history function to check if the user has entered a prompt or not
+            # #if the user has entered a prompt, the auto_save_chat_history function will call save_chat_history function with session state log which has user prompt

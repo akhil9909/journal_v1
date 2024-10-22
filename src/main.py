@@ -58,6 +58,7 @@ async def main(human_prompt: str, selected_assistant: str) -> dict:
     st.session_state.MEMORY.append({'role': "assistant", 'content': chatbot_response})
 
     res = {'status': chatbot_response_dict['status'], 'message': msg}
+    st.session_state.chatbot_response = chatbot_response
     st.session_state.main_called_once = True # so that next time the UI display a text_input box instead of text_area
     #time.sleep(5) # check to see behaviour of rendering user input and bot response before exiting the function
     return res # work on it, later add debugging functionality to add details to response

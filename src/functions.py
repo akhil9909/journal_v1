@@ -113,7 +113,7 @@ def get_chat_message(
 
 # Function to auto save chat history
 
-def auto_save_chat_history(run_res, selected_assistant,INITIAL_PROMPT):
+def auto_save_chat_history(run_res, selected_assistant,INITIAL_PROMPT,Boolean_Flag_to_Update_Chat_History):
     if run_res['status'] == 0 and not st.session_state.DEBUG:
             
             chat_history_dict = get_chat_history()
@@ -132,7 +132,8 @@ def auto_save_chat_history(run_res, selected_assistant,INITIAL_PROMPT):
                 if save_chat_history(st.session_state.thread_id, 
                                 selected_assistant, 
                                 st.session_state.initial_prompt, 
-                                st.session_state.chat_history):
+                                st.session_state.chat_history,
+                                Boolean_Flag_to_Update_Chat_History):
                     st.session_state.chat_history_status = "Chat history saved"
                 else:
                     st.session_state.chat_history_status = "Chat history NOT saved"

@@ -3,6 +3,7 @@ import json
 import os
 from botocore.exceptions import ClientError
 import logging
+from datetime import datetime
 
 #aws_access_key_id = os.getenv('AWS_ACCESS_KEY')
 #aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -30,19 +31,42 @@ def aws_log_error(message):
 dynamodb = boto3.resource('dynamodb')
 
 # Insert a new item or update an existing item
-def save_chat_history(thread_id, assistant_id, user_prompt, chat_history):
+def save_chat_history(thread_id, assistant_id, user_prompt, chat_history,Boolean_Flag_to_Update_Chat_History):
     try:
         table_name = get_dynamodb_table_name()
         table = dynamodb.Table(table_name)
-        table.put_item(
-            Item={
-                'thread_id': thread_id,
-                'assistant': assistant_id,
-                'prompt': user_prompt,
-                'history': chat_history
-            }
-        )
-        return True  # Indicate success
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        if Boolean_Flag_to_Update_Chat_History:
+            table.update_item(
+                Key={
+                'thread_id': thread_id
+                },
+                UpdateExpression="SET prompt = :p, history = :h, #d = :d, #dt = :dt",
+                ExpressionAttributeNames={
+                    '#d': 'date',
+                    '#dt': 'datetime'
+                },
+                ExpressionAttributeValues={
+                ':p': user_prompt,
+                ':h': chat_history,
+                ':d': current_date,
+                ':dt': current_datetime
+                }
+            )
+            return True
+        else:
+            table.put_item(
+                Item={
+                    'thread_id': thread_id,
+                    'assistant': assistant_id,
+                    'prompt': user_prompt,
+                    'history': chat_history,
+                    'date': current_date,
+                    'datetime': current_datetime
+                }
+            )
+            return True  # Indicate success
     except Exception as e:
         aws_log_error(f"Error saving chat history: {e}")
         return False  # Indicate failure
@@ -106,3 +130,23 @@ def get_credentials():
     
     secret = get_secret_value_response['SecretString']
     return secret
+
+def save_feedback(thread_id, assistant_id, assistant_response, feedback,other_feedback):
+    try:
+        table_name = get_dynamodb_table_name()
+        table = dynamodb.Table(table_name)
+        table.update_item(
+            Key={
+            'thread_id': thread_id,
+            },
+            UpdateExpression="SET assistant_response = :ar, feedback = :fb, other_feedback = :of",
+            ExpressionAttributeValues={
+            ':ar': assistant_response,
+            ':fb': feedback,
+            ':of': other_feedback
+            }
+        )
+        return True  # Indicate success
+    except Exception as e:
+        aws_log_error(f"Error saving feedback: {e}")
+        return False  # Indicate failure
