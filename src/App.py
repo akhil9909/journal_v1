@@ -88,6 +88,8 @@ def reset_session() -> dict:
     st.session_state.MEMORY = [{'role': "system", 'content': INITIAL_PROMPT}]
     st.session_state.main_called_once = False
     st.session_state.input_text = ""
+    st.session_state.feedback = ""
+    st.session_state.other_feedback = ""
     try:
         thread = openai.beta.threads.create()
         st.session_state.thread_id = thread.id
