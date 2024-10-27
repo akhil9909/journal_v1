@@ -11,6 +11,12 @@ from cached_functions import get_local_img, ROOT_DIR
 async def main(human_prompt: str, selected_assistant: str) -> dict:
     res = {'status': 0, 'message': "Success"}
     
+    if human_prompt.startswith("Feedback: "):
+        st.session_state.LOG.append(f"{human_prompt}")
+        st.success("Thank you for your feedback!")
+        await asyncio.sleep(1)
+        return res
+    
     prompt_box = st.empty()
     chat_box = st.empty()
 
