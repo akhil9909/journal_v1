@@ -93,6 +93,7 @@ def reset_session() -> dict:
     st.session_state.input_text = ""
     st.session_state.feedback = ""
     st.session_state.other_feedback = ""
+    st.session_state.initial_prompt = INITIAL_PROMPT
     try:
         thread = openai.beta.threads.create()
         st.session_state.thread_id = thread.id
@@ -121,9 +122,15 @@ def Feedback():
         st.session_state.other_feedback = other_feedback
         st.session_state.feedback_provided = True
         st.session_state.LOG.append(f"Feedback: (selected) {reason}")
-        st.session_state.LOG.append(f"Feedback: {other_feedback}")
+        st.session_state.LOG.append(f"Feedback: (other) {other_feedback}")
         save_feedback(st.session_state.thread_id, st.session_state.assistant, st.session_state.chatbot_response, st.session_state.feedback,st.session_state.other_feedback)
         st.success("Feedback submitted successfully")
+        ##auto save chat history if feedbakc sumbitted to enter feedback as part of chat history
+        dummy_res = {'status': 0, 'message': "Success"}
+        dummy_human_prompt = "dummy human prompt"
+        auto_save_chat_history(dummy_res, st.session_state.assistant, INITIAL_PROMPT,True,dummy_human_prompt)
+        ####end auto save chat history
+        #only keep auto save chat history if feedback is provided, delete other columns update in dynamocdb logic
         time.sleep(1)  # sleep 1 second
         st.rerun()
 
@@ -156,7 +163,10 @@ if st.session_state.DEBUG:
         st.write(f"Analysis mode flag: {st.session_state.analysis_mode}")
 
 # Get available assistants (you'll need to implement this)
-assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
+if st.session_state.assistant == "":
+    assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
+else:
+    assistants = [st.session_state.assistant,"asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
 
 selected_assistant = st.selectbox("Select Assistant", assistants)
 st.session_state.assistant = selected_assistant
@@ -209,8 +219,8 @@ if analysis_mode_on:
 else:
     st.session_state.analysis_mode = False
 
-st.title("My Journal v3")
-st.write("This is a journaling app that uses OpenAI's GPT-3 to assist you in developing your strengths.")
+st.title(":blue[My Journal v3]")
+st.caption("This is a journaling app that uses :blue[OpenAI]'s GPT-3 to assist you in developing your strengths.")
 chat_box = st.container()
 st.write("")
 hint_box = st.container()
@@ -312,7 +322,7 @@ with prompt_box:
             human_prompt =  st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
 
 if st.session_state.authenticated:
-    run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}")
+    run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}",type='primary')
 
 if st.session_state.main_called_once:
     hint_box.empty()
@@ -326,7 +336,7 @@ if st.session_state.authenticated:
         st.session_state.feedback_provided = False
         run_res = asyncio.run(main(human_prompt, st.session_state.assistant))
         #update chat history and rerun the app
-        auto_save_chat_history(run_res, st.session_state.assistant, INITIAL_PROMPT,False)
+        auto_save_chat_history(run_res, st.session_state.assistant, INITIAL_PROMPT,False,human_prompt)
         #note that INITIAL_PROMPT is the a dummy value, its passed to the auto_save_chat_history function to check if the user has entered a prompt or not
         #if the user has entered a prompt, the auto_save_chat_history function will call save_chat_history function with session state log which has user prompt
 
@@ -337,6 +347,6 @@ if st.session_state.authenticated:
             st.session_state.feedback_provided = False
             run_res = asyncio.run(main(human_prompt, st.session_state.assistant))
             #update chat history and rerun the app
-            auto_save_chat_history(run_res, st.session_state.assistant, INITIAL_PROMPT,True)
+            auto_save_chat_history(run_res, st.session_state.assistant, INITIAL_PROMPT,True, human_prompt)
             #note that INITIAL_PROMPT is the a dummy value, its passed to the auto_save_chat_history function to check if the user has entered a prompt or not
             # #if the user has entered a prompt, the auto_save_chat_history function will call save_chat_history function with session state log which has user prompt

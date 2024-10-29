@@ -31,7 +31,7 @@ def aws_log_error(message):
 dynamodb = boto3.resource('dynamodb')
 
 # Insert a new item or update an existing item
-def save_chat_history(thread_id, assistant_id, user_prompt, chat_history,Boolean_Flag_to_Update_Chat_History):
+def save_chat_history(thread_id, assistant_id, user_prompt, chat_history, Boolean_Flag_to_Update_Chat_History):
     try:
         table_name = get_dynamodb_table_name()
         table = dynamodb.Table(table_name)
@@ -42,13 +42,12 @@ def save_chat_history(thread_id, assistant_id, user_prompt, chat_history,Boolean
                 Key={
                 'thread_id': thread_id
                 },
-                UpdateExpression="SET prompt = :p, history = :h, #d = :d, #dt = :dt",
+                UpdateExpression="SET history = :h,  #d = :d, #dt = :dt",
                 ExpressionAttributeNames={
                     '#d': 'date',
                     '#dt': 'datetime'
                 },
                 ExpressionAttributeValues={
-                ':p': user_prompt,
                 ':h': chat_history,
                 ':d': current_date,
                 ':dt': current_datetime
@@ -150,3 +149,23 @@ def save_feedback(thread_id, assistant_id, assistant_response, feedback,other_fe
     except Exception as e:
         aws_log_error(f"Error saving feedback: {e}")
         return False  # Indicate failure
+    
+
+
+def fetch_conversations() -> list:
+    sorted_items = []
+    try:
+        table_name = get_dynamodb_table_name()
+        table = dynamodb.Table(table_name)        
+        response = table.scan()
+        items = response['Items']
+        
+        # Ensure 'date' key exists in items before sorting
+        items_with_date = [item for item in items if 'date' in item]
+        # Sort items by date in descending order and get the last 10 conversations
+        sorted_items = sorted(items_with_date, key=lambda x: x['date'], reverse=True)[:50]
+        
+    except ClientError as e:
+        aws_log_error(f"Error fetching conversations: {e}")
+        raise e
+    return sorted_items

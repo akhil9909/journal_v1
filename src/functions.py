@@ -113,37 +113,55 @@ def get_chat_message(
 
 # Function to auto save chat history
 
-def auto_save_chat_history(run_res, selected_assistant,INITIAL_PROMPT,Boolean_Flag_to_Update_Chat_History):
+def auto_save_chat_history(run_res, selected_assistant,INITIAL_PROMPT,Boolean_Flag_to_Update_Chat_History,human_prompt):
     if run_res['status'] == 0 and not st.session_state.DEBUG:
             
-            chat_history_dict = get_chat_history()
+            #######
+            # I have removed the below code, as i am saving chat history in dynamoDB from log variable instead of the get_chat_history() function from openAI
+            #######
+            # chat_history_dict = get_chat_history()
             
-            if chat_history_dict['status'] == 0:
-                chat_history = chat_history_dict['message']
-                formatted_chat_history = ""
-                for message in chat_history:
-                    if message.role == "user":
-                        formatted_chat_history += f"**You:** {message.content[0].text.value}\n" 
-                        if st.session_state.initial_prompt == INITIAL_PROMPT:
-                            st.session_state.initial_prompt = message.content[0].text.value
-                    elif message.role == "assistant":
-                        formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
-                st.session_state.chat_history = formatted_chat_history
-                if save_chat_history(st.session_state.thread_id, 
-                                selected_assistant, 
-                                st.session_state.initial_prompt, 
-                                st.session_state.chat_history,
-                                Boolean_Flag_to_Update_Chat_History):
-                    st.session_state.chat_history_status = "Chat history saved"
-                else:
-                    st.session_state.chat_history_status = "Chat history NOT saved"
-                    st.error("Failed to save Chat history, use debug mode to see more details")
-                    #add debug code, show aws_error_log variable here
-            else:
-                st.error("Failed to save chat history, use debug mode to see more details")
-                #add debug code, use chat_history_dict['message'] to show error message
-                #Failed to get Chat history from openAI code in auto save module
+            # if chat_history_dict['status'] == 0:
+            #     chat_history = chat_history_dict['message']
+            #     formatted_chat_history = ""
+            #     for message in chat_history:
+            #         if message.role == "user":
+            #             formatted_chat_history += f"**You:** {message.content[0].text.value}\n" 
+            #             if st.session_state.initial_prompt == INITIAL_PROMPT:
+            #                 st.session_state.initial_prompt = message.content[0].text.value
+            #         elif message.role == "assistant":
+            #             formatted_chat_history += f"**Assistant:** {message.content[0].text.value}\n"
+            #     st.session_state.chat_history = formatted_chat_history
+            #     if save_chat_history(st.session_state.thread_id, 
+            #                     selected_assistant, 
+            #                     st.session_state.initial_prompt, 
+            #                     st.session_state.chat_history,
+            #                     Boolean_Flag_to_Update_Chat_History):
+            #         st.session_state.chat_history_status = "Chat history saved"
+            #     else:
+            #         st.session_state.chat_history_status = "Chat history NOT saved"
+            #         st.error("Failed to save Chat history, use debug mode to see more details")
+            #         #add debug code, show aws_error_log variable here
+            # else:
+            #     st.error("Failed to save chat history, use debug mode to see more details")
+            #     #add debug code, use chat_history_dict['message'] to show error message
+            #     #Failed to get Chat history from openAI code in auto save module
+            
+            #######
+            # the logic of this code below is basically to preserve the first human prompt in conversation as initial prompt, and NOT update it in dynamodb
+            if st.session_state.initial_prompt == INITIAL_PROMPT:
+                st.session_state.initial_prompt = human_prompt
 
+            if save_chat_history(st.session_state.thread_id, 
+                            selected_assistant, 
+                            st.session_state.initial_prompt,
+                            st.session_state.LOG,
+                            Boolean_Flag_to_Update_Chat_History):
+                st.session_state.chat_history_status = "Chat history saved"
+            else:
+                st.session_state.chat_history_status = "Chat history NOT saved"
+                st.error("Failed to save Chat history, use debug mode to see more details")
+                #add debug code, show aws_error_log variable here
             st.rerun()
     else:
             if run_res['status'] != 0:
