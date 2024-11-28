@@ -7,3 +7,5 @@ openai
 PyPDF2
 boto3
 asyncio
+networkx
+matplotlib
