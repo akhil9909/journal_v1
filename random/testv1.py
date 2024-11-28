@@ -1,34 +1,25 @@
-import streamlit as st
+import boto3
+import json
+import os
+from botocore.exceptions import ClientError
+import logging
+from datetime import datetime
+# Initialize a session using Amazon DynamoDB
+dynamodb = boto3.resource('dynamodb')
 
-# Define your helpers
-helpers = [
-    "Start with a summary", 
-    "Outline key challenges", 
-    "Highlight recent achievements", 
-    "Mention stakeholder feedback", 
-    "Describe team goals", 
-    "Include project milestones", 
-    "Talk about upcoming risks", 
-    "Share new learnings", 
-    "Highlight collaboration", 
-    "List action items"
-]
-
-# Initialize session state for text area
-if "input_text" not in st.session_state:
-    st.session_state.input_text = ""
+chat_history = ("User prompt empty","Human: In my 1:1 meeting with Raj, today I brought in a vulnerability discussion about what is the expectation from my role as a technical data steward, especially around the responsibility of building a road map. The road map is currently being built by Anita and I'm contributing to it in terms of feedback. I saw recently that both Raj and Anita were disconnected in terms of structure and content of the roadmap, so I wanted to understand from Raj what is my role whether I should play actively active part in the content of the roadmap or not?. Raj was not happy. He immediately gave me feedback that he's confused and not happy with the fact that Anita and I are not aligned. (I didn't mean that). He also was not happy from the fact that I was not working on road map actively. He also did not engaged at all into discussion about roles and responsibilities. Indeed asked me for what the deliverables a team has done over past 6 months and then team needs to interact together. When I narrated a few instances in the past especially asking for initiators that I wanted to do but were pushed back, he clarified on them of why he wanted to push back. I told him that since some business discovery initiatives were pushed back, I was focusing more on my role as technical data steward to get those things done rather than getting involved with the business use cases discovery of roadmap. Give me you take of the entire situation","S" : "AI: Thank you for sharing such a detailed account of your recent conversation with Raj. Navigating situations like these can indeed be tricky, but they provide valuable learning opportunities for personal and leadership growth. Here's how you might approach this situation:\n\n1. **Understanding Context**: You're in a pivotal role as a technical data steward within a new team, which inherently involves navigating expectations on both the technical and strategic sides. This requires careful alignment among all key stakeholders, including Raj and Anita.\n\n2. **Identifying Strengths**: It’s clear you are proactive in seeking clarity and alignment, which is a significant strength. Your initiative to discuss vulnerabilities and actively seek understanding of your role demonstrates a forward-thinking mindset. Leverage this strength by continuing to engage in open conversations, but perhaps through more formalized channels like structured meetings focusing on alignment.\n\n   3. **Balancing and Practicing Leadership**: As you juggle responsibilities, strive for balancing technical stewardship with strategic participation. You could consider proposing a more structured way of collaborating on the roadmap with Anita and Raj, perhaps with regular check-ins. This way, you assert your leadership without overstepping boundaries.\n\n4. **Ego and Humility**: Ego can sometimes cloud communication, as seen in Raj's reaction. Managing this situation calls for you to maintain humility and clarify your intentions peacefully. You didn't mean to imply a disconnect between Raj and Anita but rather sought clarity. Ensure your communications convey this understanding and intention unambiguously.\n\n5. **Exploring Vulnerability**: Reflect more on your conversations about roadblocks. Why are there ongoing disconnects and what's the core reason behind feedback resistance? Are there commonalities or patterns in the concerns being raised? Consider exploring these questions to gain deeper insights into potential misalignments.\n\nLastly, try to learn from how feedback was delivered and explore ways by which future conversations can be more centered on solutions rather than perceived conflicts. Would you say this meeting helped you identify more precisely what actions you could take to better integrate both technical and strategic dimensions of your role? How do you plan to address the feedback on alignment moving forward? Your thoughts on these questions could lead to insightful strategies for your growth and better team collaboration.","Human:For future, I am not gonna discuss any of this or similar topics in vulnerability with Raj. For eg. Raj also have me a feedback that he carved out time from his busy day today to talk to me and whether I got what I wanted.","AI: It's understandable that receiving feedback in such a direct manner can be disheartening, especially when you are approaching the conversation with a mindset of vulnerability and sincerity. However, continuous growth in leadership often involves difficult conversations and learning from them. Here are a few points to consider as you navigate future discussions with Raj or similar stakeholders:\n\n1. **Strength through Preparation**: Before initiating discussions about roles, roadmaps, or other potentially sensitive topics, prepare thoroughly. Having a clear structure or agenda can help guide the conversation and ensure it stays productive. This preparation can also demonstrate respect for Raj's time, aligning with the feedback he provided.\n\n2. **Active Listening and Reflection**: During your conversations, focus on active listening. This involves acknowledging the feedback, even if it’s unexpected, and reflecting on it later. It can offer insights into Raj's expectations and communication style, helping you adjust your approach in the future.\n\n3. **Focusing on Solutions**: Instead of avoiding vulnerable topics altogether, focus on solution-oriented discussions. For instance, if discussing role expectations, frame the conversation around how you can best contribute to the team's success and support Raj and Anita's vision.\n\n4. **Clear Communication**: Ensure your intentions and the purpose of your discussions are clear from the onset. Clarifying that you aim to align closer with the team's objectives may prevent misunderstandings about your motives.\n\n5. **Building a Collaborative Relationship**: While you may feel disinclined to initiate vulnerable discussions with Raj, consider how you might build a more collaborative relationship. This could involve regular updates or check-ins that focus on progress and future plans, rather than past disconnects.\n\nIt’s valuable to learn from each interaction, asking yourself what went well and what could be improved for next time. I understand the reluctance you might feel, but consider these experiences as opportunities to refine your communication strategy. Do you think there are elements from these conversations that you could try handling differently next time? How might you create a space where you feel safe expressing vulnerability, yet still maintain the professionalism Raj expects?","Human:I did prepare thoroughly before emy conversation, it is just that I don't trust that Raj can take up such a rumbling approach","AI: Building trust in professional relationships, especially with superiors, is a crucial aspect of effective leadership. Given your situation with Raj, it's important to find ways to maintain open communication without feeling that your approach or input will be undervalued or misinterpreted. Here's how you might go about it:\n\n1. **Clarify Expectations**: Since trust is an issue, it might help to focus on collaborative ways to clarify expectations. Can you find opportunities to align on goals through written communication, like emails or shared documents, where both parties agree on actions or understandings in a documented format?\n\n2. **Strategic Engagement**: Consider engaging Raj in a way that aligns discussions with his priorities. Find out what specifically matters to him about your role's performance and tailor your approach accordingly. This could involve linking your inputs and discussions to overarching goals of the marketing analytics unit.\n\n3. **Feedback Channels**: If direct approaches aren’t yielding the desired trust or cooperation, perhaps create alternative channels for feedback or proposal submissions. This could be through regular team meetings or leveraging documents that everyone can contribute to collaboratively.\n\n4. **Building Incremental Trust**: Trust doesn't have to be all-or-nothing. Aim to build it incrementally by consistently demonstrating reliability in smaller tasks or initiatives. Success in these areas can gradually shift perceptions and open the door to more open dialogues.\n\n5. **Explore Alternative Perspectives**: Sometimes a third perspective can help lessen mistrust. Could you involve another trusted stakeholder, like Anitha, to mediate or validate certain proposals? Their input might help bridge understanding gaps with Raj.\n\nFinally, consider the possibility of framing your contributions in a way that showcases mutual benefits. By aligning your efforts with the recognized goals of your team and Raj's work, you might find a more fruitful pathway for communication and collaboration. Are there specific initiatives or changes you’d like to suggest that could help begin mending this trust? How might you frame them for Raj in a way that underscores shared success?")
 
 
-# Function to add helper text to the textarea
-def add_helper_text(helper):
-    st.session_state.input_text += " " + helper
-# Display chips as buttons
-st.markdown('<h4>Select a pointer to guide your writing:</h4>', unsafe_allow_html=True)
-for helper in helpers:
-    if st.button(helper):
-        add_helper_text(helper)
-
-# Text area for user input - controlled by session_state
-st.text_area("Your Input", value=st.session_state.input_text, key="input_text", height=200)
-if st.button("run Input"):
-    st.write(st.session_state.input_text)
+def test_aws(thread_id):
+    table = dynamodb.Table("streamlit_prod")
+    
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    table.update_item(
+        Key={
+        'thread_id': thread_id
+        },
+        UpdateExpression="SET history = :h",
+        ExpressionAttributeValues={':h': chat_history})
+    
+test_aws("thread_AolvJC3wsVfzYhWxJ0dleyMD")

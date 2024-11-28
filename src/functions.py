@@ -5,10 +5,11 @@ import base64
 from cached_functions import get_local_img, ROOT_DIR
 import logging
 import html
-from awsfunc import save_chat_history, aws_error_log
+from awsfunc import save_chat_history, aws_error_log, get_promptops_entries,get_openai_api_key
 import time
+from openai import OpenAI
 
-
+client = OpenAI(api_key=get_openai_api_key())
 
 # Configure logging
 error_log = []
@@ -180,3 +181,64 @@ def auto_save_chat_history(run_res, selected_assistant,INITIAL_PROMPT,Boolean_Fl
                 # Sleep for 2 seconds
                 time.sleep(2)
                 st.rerun()
+
+def fetch_and_summarize_entries(component):
+        entries = get_promptops_entries(component)
+        filtered_entries = [entry['description'] for entry in entries if not entry.get('do_not_stage', False)]
+        
+        if filtered_entries:
+            combined_text = " ".join(filtered_entries)
+            response = client.chat.completions.create(
+                model="gpt-4o",  # Use "gpt-4" if you prefer that model
+                messages=[{"role": "user", "content": f"Analyze the following topics and infer key elements and relationships. Keep the elements and relationships short, if no other details are given, do not create new details"
+                           "Return the relationships as a structured format that describes how these topics relate to each other. Do not responsd in any other format or any other details.\n\n"
+                           f"Topics: {', '.join(filtered_entries)}"}]
+            )
+            return response.choices[0].message.content.strip()
+
+        return "No topics to summarize."
+
+# Call OpenAI's DALL-E API to generate an image
+def generate_image_from_gpt(prompt):
+    response = client.images.generate(
+    model="dall-e-3",
+    prompt=prompt,
+    size="1024x1024",
+    quality="standard",
+    n=1,
+    )
+    image_url = response.data[0].url
+    return image_url
+
+#archived functions
+
+# def create_infographic(relationships_text):
+#     G = nx.DiGraph()  # Directed graph
+    
+#     # Parse relationships from GPT response
+#     relationships = relationships_text.split('\n')
+#     for relation in relationships:
+#         if '->' in relation:
+#             src_dest, description = relation.split(':')
+#             src, dest = src_dest.split('->')
+#             G.add_edge(src.strip(), dest.strip(), label=description.strip())
+    
+#     # Plot the graph using matplotlib
+#     plt.figure(figsize=(12, 8))  # Increase figure size for more space
+#     pos = nx.spring_layout(G, k=0.5)  # Adjust k to control node spacing (higher = more space)
+    
+#     # Draw the nodes and edges
+#     nx.draw(G, pos, with_labels=True, node_size=3000, node_color="lightblue", font_size=12, font_weight="bold", arrows=True)
+    
+#     # Extract edge labels (relationship descriptions)
+#     labels = nx.get_edge_attributes(G, 'label')
+    
+#     # Increase font size and adjust positioning of edge labels
+#     nx.draw_networkx_edge_labels(G, pos, edge_labels=labels, font_color='red', font_size=10, label_pos=0.5, bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.3'))
+    
+#     # Save the plot to a buffer
+#     buf = BytesIO()
+#     plt.savefig(buf, format='png', bbox_inches='tight')  # bbox_inches ensures better fitting of the graph
+#     buf.seek(0)
+    
+#     return buf
