@@ -32,6 +32,15 @@ def get_dynamodb_table_name_promptops():
         # If the environment variable is not set, default to a static name (for development)
         return 'dev_promptops' 
 
+#get dynamodb table name for promptops
+def get_dynamodb_table_name_static_prompt():
+    try:
+        # Attempt to fetch the table name from environment variables (for production)
+        table_name = os.environ['DYNAMODB_TABLE_STATIC_PROMPT']
+        return table_name
+    except KeyError:
+        # If the environment variable is not set, default to a static name (for development)
+        return 'dev_static_prompts' 
 
 def aws_log_error(message):
     aws_error_log.append(message)
@@ -256,6 +265,27 @@ def update_promptops_entry_to_DB(uuid_promptops, some_date_value, updated_descri
     except Exception as e:
         aws_log_error(f"Error updating promptops entry: {e}")
         return False  # Indicate failure
+######
+def update_static_prompt_to_DB(title,description):
+    try:
+        table_name = get_dynamodb_table_name_static_prompt(title, description)
+        table = dynamodb.Table(table_name)
+        table.update_item(
+            Key={
+            'title': title
+            },
+            UpdateExpression="SET description = :d",
+            ExpressionAttributeValues={
+            ':d': description
+            }
+        )
+        return True  # Indicate success
+    except Exception as e:
+        aws_log_error(f"Error updating static prompts: {e}")
+        return False  # Indicate failure
+
+
+######
 
 def delete_promptops_entry_from_DB(uuid_promptops, some_date_value):
     try:

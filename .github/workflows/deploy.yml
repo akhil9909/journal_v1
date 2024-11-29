@@ -46,6 +46,7 @@ jobs:
           source venv/bin/activate
           export DYNAMODB_TABLE="streamlit_prod"
           export DYNAMODB_TABLE_PROMPTOPS="prod_promptops"
+          export DYNAMODB_TABLE_STATIC_PROMPT="prod_static_prompts"
           nohup streamlit run src/App.py > streamlit.log 2>&1 &
           disown
           EOF

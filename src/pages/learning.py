@@ -12,8 +12,7 @@ if '/workspaces/journal_v1/src/' not in sys.path:
 #wirte if not exists
 
 from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB
-from static_prompts_fn import generate_image_prompt
-from functions import fetch_and_summarize_entries, generate_image_from_gpt
+from functions import fetch_and_summarize_entries, generate_image_from_gpt,generate_image_prompt
 
 client = OpenAI(api_key=get_openai_api_key())
 
@@ -22,6 +21,8 @@ if 'learning_component' not in st.session_state:
     st.session_state['learning_component'] = "todo"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
+if 'counter' not in st.session_state:
+    st.session_state.counter = 0
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
@@ -77,7 +78,7 @@ if st.session_state.authenticated:
     with col_a:
         st.header(":gray[Topics for Staging]")
         entries = get_promptops_entries(st.session_state.learning_component)
-        for entry in entries:
+        for entry in reversed(entries):
             st.subheader(entry['title'],divider="blue")
             if(entry['do_not_stage']):
                 st.caption(":old_key:[This will not be staged for changes]")
@@ -88,14 +89,15 @@ if st.session_state.authenticated:
                 
             
         st.caption(":blue[Add a new topic]")
-        todo_text_input_widget = st.text_input('topic heading',key='todo_text_input_key') #value=st.session_state.todo_text_input,
-        todo_text_area_widget = st.text_area('topic details |      :blue[Press Ctrl/Cmd Enter to Apply]',key='to_do_text_area_key') #value=st.session_state.to_do_text_area,
+        todo_text_input_widget = st.text_input('topic heading',key='todo_text_input_key'+str(st.session_state.counter)) #value=st.session_state.todo_text_input,
+        todo_text_area_widget = st.text_area('topic details |      :blue[Press Ctrl/Cmd Enter to Apply]',key='to_do_text_area_key'+str(st.session_state.counter)) #value=st.session_state.to_do_text_area,
                     
         
         if(st.button('save', type='primary') and len(todo_text_input_widget)>0 and len(todo_text_area_widget)>0):
             if (save_new_promptops_entry_to_DB(todo_text_input_widget,todo_text_area_widget,st.session_state.learning_component)):
                 st.success("Topic added successfully.")
-                time.sleep(2)
+                st.session_state.counter += 1
+                time.sleep(1)
                 st.rerun()
             else:
                 st.error("Failed to add topic. Use debug mode to check logs.")

@@ -8,6 +8,7 @@ import html
 from awsfunc import save_chat_history, aws_error_log, get_promptops_entries,get_openai_api_key
 import time
 from openai import OpenAI
+from static_prompts import summarize_before_image_prompt_text, generate_image_prompt_text
 
 client = OpenAI(api_key=get_openai_api_key())
 
@@ -188,15 +189,18 @@ def fetch_and_summarize_entries(component):
         
         if filtered_entries:
             combined_text = " ".join(filtered_entries)
+            
             response = client.chat.completions.create(
                 model="gpt-4o",  # Use "gpt-4" if you prefer that model
-                messages=[{"role": "user", "content": f"Analyze the following topics and infer key elements and relationships. Keep the elements and relationships short, if no other details are given, do not create new details"
-                           "Return the relationships as a structured format that describes how these topics relate to each other. Do not responsd in any other format or any other details.\n\n"
-                           f"Topics: {', '.join(filtered_entries)}"}]
+                messages=[{"role": "user", "content": f"{summarize_before_image_prompt_text}\n\nTopics: {', '.join(filtered_entries)}"}]
             )
             return response.choices[0].message.content.strip()
 
         return "No topics to summarize."
+#imgae prompt
+def generate_image_prompt(relationships_text):
+    prompt = f"{generate_image_prompt_text}Relationships: {relationships_text}\n\n"
+    return prompt
 
 # Call OpenAI's DALL-E API to generate an image
 def generate_image_from_gpt(prompt):
