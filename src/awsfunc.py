@@ -266,9 +266,21 @@ def update_promptops_entry_to_DB(uuid_promptops, some_date_value, updated_descri
         aws_log_error(f"Error updating promptops entry: {e}")
         return False  # Indicate failure
 ######
+def fetch_static_prompts_from_DB() -> list:
+    sorted_items = []
+    try:
+        table_name = get_dynamodb_table_name_static_prompt()
+        table = dynamodb.Table(table_name)
+        response = table.scan()
+        items = response['Items']        
+    except ClientError as e:
+        aws_log_error(f"Error fetching static prompts: {e}")
+        raise e
+    return items
+######
 def update_static_prompt_to_DB(title,description):
     try:
-        table_name = get_dynamodb_table_name_static_prompt(title, description)
+        table_name = get_dynamodb_table_name_static_prompt()
         table = dynamodb.Table(table_name)
         table.update_item(
             Key={
@@ -321,3 +333,24 @@ def delete_promptops_entry_from_DB(uuid_promptops, some_date_value):
 #     except Exception as e:
 #         aws_log_error(f"Error updating do_not_stage flag: {e}")
 #         return False  # Indicate failure
+
+
+
+# def fetch_static_prompts_from_DB() -> list:
+#     sorted_items = []
+#     try:
+#         table_name = get_dynamodb_table_name_static_prompt()
+#         table = dynamodb.Table(table_name)
+#         response = table.scan()
+#         items = response['Items']
+        
+#         # Ensure 'description' key exists in items before sorting
+#         items_with_description = [item for item in items if 'description' in item]
+#         # Filter items by description is not null
+#         filtered_items = [item for item in items_with_description if item.get('description') not in [None, '']]
+#         # Sort items by title in ascending order
+#         sorted_items = sorted(filtered_items, key=lambda x: x['title'], reverse=False)
+#     except ClientError as e:
+#         aws_log_error(f"Error fetching static prompts: {e}")
+#         raise e
+#     return sorted_items

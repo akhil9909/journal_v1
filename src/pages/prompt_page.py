@@ -12,6 +12,8 @@ if '/workspaces/journal_v1/src/' not in sys.path:
 #wirte if not exists
 
 from awsfunc import get_openai_api_key
+from streamlit_session_states import get_session_states
+
 import yaml
 
 client = OpenAI(api_key=get_openai_api_key())
@@ -23,12 +25,22 @@ if 'promptops_assistant' not in st.session_state:
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
+if "DEBUG" not in st.session_state:
+    st.session_state.DEBUG = False
+
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
     page_title="My Prompts",
     layout="wide"
 )
+
+# Get query parameters
+try:
+    if st.query_params["DEBUG"].lower() == "true":
+        st.session_state.DEBUG = True
+except KeyError:
+    pass
 
 # Debugging: Print the sys.path to ensure the correct path is included
 #st.write("Current sys.path:", sys.path)
@@ -64,3 +76,6 @@ if st.session_state.authenticated:
 else:
     st.write("Please log in to view your conversation history.")
     st.page_link("./App.py", label="Log in", icon="🔒")
+
+if st.session_state.DEBUG:
+    get_session_states()

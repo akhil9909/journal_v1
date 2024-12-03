@@ -13,6 +13,7 @@ if '/workspaces/journal_v1/src/' not in sys.path:
 
 from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB
 from functions import fetch_and_summarize_entries, generate_image_from_gpt,generate_image_prompt
+from streamlit_session_states import get_session_states
 
 client = OpenAI(api_key=get_openai_api_key())
 
@@ -23,6 +24,8 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'counter' not in st.session_state:
     st.session_state.counter = 0
+if "DEBUG" not in st.session_state:
+    st.session_state.DEBUG = False
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
@@ -30,6 +33,12 @@ st.set_page_config(
     layout="wide"
 )
 
+# Get query parameters
+try:
+    if st.query_params["DEBUG"].lower() == "true":
+        st.session_state.DEBUG = True
+except KeyError:
+    pass
 
 # Debugging: Print the sys.path to ensure the correct path is included
 #st.write("Current sys.path:", sys.path)
@@ -59,7 +68,7 @@ def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
     if(delete_box == "delete"):
         if (delete_promptops_entry_from_DB(uuid_promptops,date_promptops)):
             st.success("Entry deleted successfully.")
-            st.session_state.boolean_flag_to_show_topics = True
+            st.session_state.boolean_flag_to_show_topics = True #this is not required, remove it and chekc if it works
             time.sleep(2)
             st.rerun()
 
@@ -128,3 +137,6 @@ if st.session_state.authenticated:
 else:
     st.write("Please log in to view your conversation history.")
     st.page_link("./App.py", label="Log in", icon="🔒")
+
+if st.session_state.DEBUG:
+    get_session_states()

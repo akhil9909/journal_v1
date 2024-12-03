@@ -16,10 +16,23 @@ config_path = os.path.join(ROOT_DIR, 'src', 'page_config.yaml')
 with open(config_path, 'r') as file:
     config = yaml.safe_load(file)
 
+from streamlit_session_states import get_session_states
+
+# Get query parameters
+try:
+    if st.query_params["DEBUG"].lower() == "true":
+        st.session_state.DEBUG = True
+except KeyError:
+    pass
+
+
 #authenticate
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
+if "DEBUG" not in st.session_state:
+    st.session_state.DEBUG = False
+    
 if st.session_state.authenticated:
     st.title(" User Input Details Page ")
     #st.selectbox("Select Section1", list(config.keys()))
@@ -53,3 +66,6 @@ if st.session_state.authenticated:
 else:
     st.write("Please log in to view your User Page.")
     st.page_link("./App.py", label="Log in", icon="🔒")
+
+if st.session_state.DEBUG:
+    get_session_states()

@@ -5,10 +5,13 @@ import base64
 from cached_functions import get_local_img, ROOT_DIR
 import logging
 import html
-from awsfunc import save_chat_history, aws_error_log, get_promptops_entries,get_openai_api_key
+from awsfunc import save_chat_history, aws_error_log, get_promptops_entries,get_openai_api_key, fetch_static_prompts_from_DB
 import time
 from openai import OpenAI
-from static_prompts import summarize_before_image_prompt_text, generate_image_prompt_text
+import sys
+
+if '/workspaces/journal_v1/src/pages' not in sys.path:
+    sys.path.append('/workspaces/journal_v1/src/pages')
 
 client = OpenAI(api_key=get_openai_api_key())
 
@@ -19,7 +22,20 @@ def log_error(message):
     error_log.append(message)
     logging.error(message)
 
-# Function to add user message and run assistant
+#fetch static prompts and update session state
+def fetch_static_prompts():
+    static_prompts = fetch_static_prompts_from_DB()
+    for prompt in static_prompts:
+        title = prompt['title']
+        description = prompt['description']
+        if title == "generate_image_prompt_text":
+            st.session_state.generate_image_prompt_text = description
+        if title == "summarize_before_image_prompt_text":
+            st.session_state.summarize_before_image_prompt_text = description
+        st.write("------------------------------------------------")
+    return
+
+# Function to add user  message and run assistant
 async def run_assistant(prompt, assistant_id) -> dict:
     res = {'status': 0, 'message': "Success"}
     try:
@@ -184,22 +200,24 @@ def auto_save_chat_history(run_res, selected_assistant,INITIAL_PROMPT,Boolean_Fl
                 st.rerun()
 
 def fetch_and_summarize_entries(component):
-        entries = get_promptops_entries(component)
-        filtered_entries = [entry['description'] for entry in entries if not entry.get('do_not_stage', False)]
+    fetch_static_prompts()
+    entries = get_promptops_entries(component)
+    filtered_entries = [entry['description'] for entry in entries if not entry.get('do_not_stage', False)]
+    
+    if filtered_entries:
+        combined_text = " ".join(filtered_entries)
         
-        if filtered_entries:
-            combined_text = " ".join(filtered_entries)
-            
-            response = client.chat.completions.create(
-                model="gpt-4o",  # Use "gpt-4" if you prefer that model
-                messages=[{"role": "user", "content": f"{summarize_before_image_prompt_text}\n\nTopics: {', '.join(filtered_entries)}"}]
-            )
-            return response.choices[0].message.content.strip()
+        response = client.chat.completions.create(
+            model="gpt-4o",  # Use "gpt-4" if you prefer that model
+            messages=[{"role": "user", "content": f"{st.session_state.summarize_before_image_prompt_text}\n\nTopics: {', '.join(filtered_entries)}"}]
+        )
+        return response.choices[0].message.content.strip()
 
-        return "No topics to summarize."
+    return "No topics to summarize."
 #imgae prompt
 def generate_image_prompt(relationships_text):
-    prompt = f"{generate_image_prompt_text}Relationships: {relationships_text}\n\n"
+    fetch_static_prompts()
+    prompt = f"{st.session_state.generate_image_prompt_text}Relationships: {relationships_text}\n\n"
     return prompt
 
 # Call OpenAI's DALL-E API to generate an image

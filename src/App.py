@@ -3,6 +3,7 @@ import openai
 import os
 import json
 from functions import run_assistant, get_chat_history, get_chat_message, auto_save_chat_history
+from streamlit_session_states import get_session_states
 from awsfunc import save_chat_history, get_openai_api_key, get_credentials,save_feedback,aws_error_log
 from cached_functions import get_css
 import base64
@@ -142,25 +143,7 @@ st.set_page_config(
 
 # Debug area
 if st.session_state.DEBUG:
-    with st.sidebar:
-        st.subheader("Debug area")
-        st.write(f"Assistant: {st.session_state.assistant}")
-        st.write(f"Thread ID: {st.session_state.thread_id}")
-        st.write(f"Initial Prompt: {st.session_state.initial_prompt}")
-        st.write(f"Chat History: {st.session_state.chat_history}")
-        st.write(f"Chat History Status: {st.session_state.chat_history_status}")
-        st.write(f"Memory: {st.session_state.MEMORY}")
-        st.write(f"Input Text: {st.session_state.input_text}")
-        st.write(f"main_called_once: {st.session_state.main_called_once}")
-        st.write(f"Log: {st.session_state.LOG}")
-        st.write(f"Debug mode: {st.session_state.DEBUG}")
-        st.write(f"Authenticated: {st.session_state.authenticated}")
-        st.write(f"Username: {st.session_state.get('username', 'Not set')}")
-        st.write(f"Rerun: {st.session_state.get('rerun', False)}")  # Check if rerun flag is set
-        st.write(f"AWS error log: {aws_error_log}")
-        st.write(f"Feedback: {st.session_state.feedback}")
-        st.write(f"Other Feedback: {st.session_state.other_feedback}")
-        st.write(f"Analysis mode flag: {st.session_state.analysis_mode}")
+    get_session_states()
 
 # Get available assistants (you'll need to implement this)
 if st.session_state.assistant == "":

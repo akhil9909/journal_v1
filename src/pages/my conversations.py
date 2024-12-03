@@ -3,6 +3,17 @@ import boto3
 from boto3.dynamodb.conditions import Key
 from awsfunc import fetch_conversations
 import streamlit as st
+from streamlit_session_states import get_session_states
+
+if 'DEBUG' not in st.session_state:
+    st.session_state.DEBUG = False
+
+#get query parameters
+try:
+    if st.query_params["DEBUG"].lower() == "true":
+        st.session_state.DEBUG = True
+except KeyError:
+    pass
 
 def load_session_state(thread_id, log,selected_assistant):
     st.write("Navigating to the App page...")
@@ -49,3 +60,6 @@ if st.session_state.authenticated:
 else:
     st.write("Please log in to view your conversation history.")
     st.page_link("./App.py", label="Log in", icon="🔒")
+
+if st.session_state.DEBUG:
+    get_session_states()
