@@ -34,7 +34,11 @@ def modify_static_prompt(title,description):
             time.sleep(2)
             st.rerun()
         else:
-            st.error("Failed to save changes.")
+            st.error("Failed to save changes. Check Debug for Details.")
+            if st.session_state.DEBUG:
+                with st.sidebar:
+                    st.text("Failed at save static prompts update"
+                        f"Error Log: {aws_error_log}")
 
 
 #fetch the prompts from the database, create a fucntion to fetch the prompts

@@ -11,7 +11,7 @@ if '/workspaces/journal_v1/src/' not in sys.path:
     sys.path.append('/workspaces/journal_v1/src/')
 #wirte if not exists
 
-from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB
+from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB, aws_error_log
 from functions import fetch_and_summarize_entries, generate_image_from_gpt,generate_image_prompt
 from streamlit_session_states import get_session_states
 
@@ -60,7 +60,11 @@ def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
             time.sleep(2)
             st.rerun()
         else:
-            st.error("Failed to save changes.")
+            st.error(f"Failed to save changes, please use DEBUG support")
+            if st.session_state.DEBUG:
+                with st.sidebar:
+                    st.text("Failed at save learning entries update"
+                        f"Error Log: {aws_error_log}")
     st.caption(':blue[OG Description]')
     st.caption(description)
     st.write("If you would like to delete the item, confirm deletion by writing 'delete' in the text box below.")
@@ -71,6 +75,12 @@ def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
             st.session_state.boolean_flag_to_show_topics = True #this is not required, remove it and chekc if it works
             time.sleep(2)
             st.rerun()
+        else:
+            st.error("Failed to delete entry. Use debug mode to check logs.")
+            if st.session_state.DEBUG:
+                with st.sidebar:
+                    st.text("Failed at delete learning entries"
+                        f"Error Log: {aws_error_log}")
 
 if st.session_state.authenticated:
     learning_component = st.selectbox(
@@ -110,6 +120,10 @@ if st.session_state.authenticated:
                 st.rerun()
             else:
                 st.error("Failed to add topic. Use debug mode to check logs.")
+                if st.session_state.DEBUG:
+                    with st.sidebar:
+                        st.text("Failed at save a new learning entry"
+                            f"Error Log: {aws_error_log}")
 
     #todolist container
 

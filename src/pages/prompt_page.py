@@ -46,32 +46,32 @@ except KeyError:
 #st.write("Current sys.path:", sys.path)
 
 if st.session_state.authenticated:
-    promptops_assistant = st.selectbox(
-        'Select a promptOps assistant:',
-        ("Basic","Rumble"),key='promptops_assistant'
-    )
-
-
     openai.api_key = get_openai_api_key()
 
     # Load the assistant mapping from a YAML file
     with open('/workspaces/journal_v1/src/mapping.yaml', 'r') as file:
         assistant_mapping = yaml.safe_load(file)
 
+    # Retrieve the assistant names from the YAML file
+    assistant_names = list(assistant_mapping['assistants'].keys())
+
+    promptops_assistant = st.selectbox(
+        'Select a promptOps assistant:',
+        assistant_names, key='promptops_assistant'
+    )
+
     # Retrieve the assistant ID based on the selected assistant
     promptops_assistant_id = assistant_mapping['assistants'].get(promptops_assistant)
-
-    #debugging
-    # st.write(promptops_assistant_id)
-    # st.write(promptops_assistant)
-    # st.write(assistant_mapping)
 
     if not promptops_assistant_id:
         st.write("Please select a valid assistant")
 
     with st.expander(label='click to see the original_instructions', expanded=False):
-        my_assistant = openai.beta.assistants.retrieve(promptops_assistant_id)
-        st.caption(my_assistant.instructions)
+        try:
+            my_assistant = openai.beta.assistants.retrieve(promptops_assistant_id)
+            st.caption(my_assistant.instructions)
+        except:
+            st.write("Please select a valid assistant")
 
 else:
     st.write("Please log in to view your conversation history.")

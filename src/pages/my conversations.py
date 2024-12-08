@@ -4,6 +4,9 @@ from boto3.dynamodb.conditions import Key
 from awsfunc import fetch_conversations
 import streamlit as st
 from streamlit_session_states import get_session_states
+import time
+import yaml
+
 
 if 'DEBUG' not in st.session_state:
     st.session_state.DEBUG = False
@@ -16,11 +19,20 @@ except KeyError:
     pass
 
 def load_session_state(thread_id, log,selected_assistant):
+    with open('/workspaces/journal_v1/src/mapping.yaml', 'r') as file:
+        assistant_mapping = yaml.safe_load(file)
     st.write("Navigating to the App page...")
     st.session_state.thread_id = thread_id
     st.session_state.LOG = log
     st.session_state.main_called_once = True
     st.session_state.assistant = selected_assistant
+    for key, value in assistant_mapping['assistants'].items():
+        if value == st.session_state.assistant:
+            st.session_state.promptops_assistant = key
+    if st.session_state.DEBUG:
+        st.warning("uploading session states of selected conversation, sleep 10")
+        get_session_states()
+        time.sleep(10)
     st.switch_page("./App.py") # error here, page link also not working
     #Memory in session state is not needed as it is not used in the App page, remove it
     #not workking
@@ -29,6 +41,7 @@ def load_session_state(thread_id, log,selected_assistant):
 
 def display_conversations():
     conversations = fetch_conversations()
+    # Load assistant mappings from the YAML file
     
     st.title("_:blue[My Journals History]_")
     st.write("------")

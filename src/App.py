@@ -1,5 +1,6 @@
 import streamlit as st
 import openai
+import yaml
 import os
 import json
 from functions import run_assistant, get_chat_history, get_chat_message, auto_save_chat_history
@@ -145,14 +146,44 @@ st.set_page_config(
 if st.session_state.DEBUG:
     get_session_states()
 
-# Get available assistants (you'll need to implement this)
-if st.session_state.assistant == "":
-    assistants = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
-else:
-    assistants = [st.session_state.assistant,"asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
+# # Get available assistants (you'll need to implement this)
+# if st.session_state.assistant == "":
+#     assistantid = ["asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
+# else:
+#     assistantid = [st.session_state.assistant,"asst_V1dqbgYTAdUEAWgBYQmBgVyZ", "No Assistant","asst_XgHiiDliPlsXljgFkSlG3zIG"]  # Replace with your logic
 
-selected_assistant = st.selectbox("Select Assistant", assistants)
-st.session_state.assistant = selected_assistant
+#selected_assistant = st.selectbox("Select Assistant", assistantid)
+    # Load the assistant mapping from a YAML file
+with open('/workspaces/journal_v1/src/mapping.yaml', 'r') as file:
+    assistant_mapping = yaml.safe_load(file)
+
+# Retrieve the assistant names from the YAML file
+assistant_names = list(assistant_mapping['assistants'].keys())
+
+# Check if the 'promptops_assistant' exists in session state
+if 'promptops_assistant' not in st.session_state:
+    # If not in session state, initialize it with the first assistant as default
+    st.session_state.promptops_assistant = assistant_names[0]
+
+# Create a selectbox and set the default value from session state
+promptops_assistant = st.selectbox(
+    'Select a coaching module:',
+    assistant_names,
+    key='promptops_assistant'  # Save the selected value in session state
+)
+
+# Retrieve the assistant ID based on the selected assistant
+promptops_assistant_id = assistant_mapping['assistants'].get(promptops_assistant)
+
+if not promptops_assistant_id:
+    st.write("Please select a valid assistant")
+
+st.session_state.assistant = promptops_assistant_id
+
+for key, value in assistant_mapping['assistants'].items():
+    if value == st.session_state.assistant:
+        st.write(f"Selected assistant: {key}")
+
 
 col1, col2 = st.columns(2)
 
