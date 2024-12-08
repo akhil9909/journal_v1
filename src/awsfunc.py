@@ -89,7 +89,6 @@ def save_chat_history(thread_id, assistant_id, user_prompt, chat_history, Boolea
     except Exception as e:
         aws_log_error(f"Error saving chat history: {e}")
         return False  # Indicate failure
-    
 
 def get_openai_api_key():
 
