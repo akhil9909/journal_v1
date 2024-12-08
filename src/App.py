@@ -198,7 +198,7 @@ with col1:
             elif save_chat_history(st.session_state.thread_id, 
                       st.session_state.assistant, 
                       st.session_state.initial_prompt, 
-                      st.session_state.chat_history):
+                      st.session_state.chat_history, True):
                 st.success("Chat history saved")
             else:
                 st.error("Failed to save Chat history")
