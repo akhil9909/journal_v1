@@ -1,3 +1,5 @@
+#the root directory (ROOT_DIR) is defined explicity in the code, not imported from cached_functions.py
+#in App.py it is imported from cached_functions.py since its outside of the pages folder
 import streamlit as st
 import openai 
 from openai import OpenAI
@@ -45,11 +47,19 @@ except KeyError:
 # Debugging: Print the sys.path to ensure the correct path is included
 #st.write("Current sys.path:", sys.path)
 
+# Load configuration from YAML file
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+st.session_state.config_path = os.path.join(ROOT_DIR, 'src', 'mapping.yaml')
+
+if 'config_path' not in st.session_state:
+    st.session_state.config_path = "error in the file path to mapping.yaml"
+
+
 if st.session_state.authenticated:
     openai.api_key = get_openai_api_key()
 
     # Load the assistant mapping from a YAML file
-    with open('/workspaces/journal_v1/src/mapping.yaml', 'r') as file:
+    with open(st.session_state.config_path, 'r') as file:
         assistant_mapping = yaml.safe_load(file)
 
     # Retrieve the assistant names from the YAML file

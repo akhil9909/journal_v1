@@ -1,3 +1,5 @@
+#the root directory (ROOT_DIR) is defined explicity in the code, not imported from cached_functions.py
+#in App.py it is imported from cached_functions.py since its outside of the pages folder
 import streamlit as st
 import yaml
 import os
