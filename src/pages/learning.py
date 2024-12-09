@@ -11,9 +11,9 @@ if '/workspaces/journal_v1/src/' not in sys.path:
     sys.path.append('/workspaces/journal_v1/src/')
 #wirte if not exists
 
-from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB
-from static_prompts_fn import generate_image_prompt
-from functions import fetch_and_summarize_entries, generate_image_from_gpt
+from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB, aws_error_log
+from functions import fetch_and_summarize_entries, generate_image_from_gpt,generate_image_prompt
+from streamlit_session_states import get_session_states
 
 client = OpenAI(api_key=get_openai_api_key())
 
@@ -22,6 +22,10 @@ if 'learning_component' not in st.session_state:
     st.session_state['learning_component'] = "todo"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
+if 'counter' not in st.session_state:
+    st.session_state.counter = 0
+if "DEBUG" not in st.session_state:
+    st.session_state.DEBUG = False
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
@@ -29,6 +33,12 @@ st.set_page_config(
     layout="wide"
 )
 
+# Get query parameters
+try:
+    if st.query_params["DEBUG"].lower() == "true":
+        st.session_state.DEBUG = True
+except KeyError:
+    pass
 
 # Debugging: Print the sys.path to ensure the correct path is included
 #st.write("Current sys.path:", sys.path)
@@ -50,7 +60,11 @@ def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
             time.sleep(2)
             st.rerun()
         else:
-            st.error("Failed to save changes.")
+            st.error(f"Failed to save changes, please use DEBUG support")
+            if st.session_state.DEBUG:
+                with st.sidebar:
+                    st.text("Failed at save learning entries update"
+                        f"Error Log: {aws_error_log}")
     st.caption(':blue[OG Description]')
     st.caption(description)
     st.write("If you would like to delete the item, confirm deletion by writing 'delete' in the text box below.")
@@ -58,9 +72,15 @@ def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
     if(delete_box == "delete"):
         if (delete_promptops_entry_from_DB(uuid_promptops,date_promptops)):
             st.success("Entry deleted successfully.")
-            st.session_state.boolean_flag_to_show_topics = True
+            st.session_state.boolean_flag_to_show_topics = True #this is not required, remove it and chekc if it works
             time.sleep(2)
             st.rerun()
+        else:
+            st.error("Failed to delete entry. Use debug mode to check logs.")
+            if st.session_state.DEBUG:
+                with st.sidebar:
+                    st.text("Failed at delete learning entries"
+                        f"Error Log: {aws_error_log}")
 
 if st.session_state.authenticated:
     learning_component = st.selectbox(
@@ -77,7 +97,7 @@ if st.session_state.authenticated:
     with col_a:
         st.header(":gray[Topics for Staging]")
         entries = get_promptops_entries(st.session_state.learning_component)
-        for entry in entries:
+        for entry in reversed(entries):
             st.subheader(entry['title'],divider="blue")
             if(entry['do_not_stage']):
                 st.caption(":old_key:[This will not be staged for changes]")
@@ -88,17 +108,22 @@ if st.session_state.authenticated:
                 
             
         st.caption(":blue[Add a new topic]")
-        todo_text_input_widget = st.text_input('topic heading',key='todo_text_input_key') #value=st.session_state.todo_text_input,
-        todo_text_area_widget = st.text_area('topic details |      :blue[Press Ctrl/Cmd Enter to Apply]',key='to_do_text_area_key') #value=st.session_state.to_do_text_area,
+        todo_text_input_widget = st.text_input('topic heading',key='todo_text_input_key'+str(st.session_state.counter)) #value=st.session_state.todo_text_input,
+        todo_text_area_widget = st.text_area('topic details |      :blue[Press Ctrl/Cmd Enter to Apply]',key='to_do_text_area_key'+str(st.session_state.counter)) #value=st.session_state.to_do_text_area,
                     
         
         if(st.button('save', type='primary') and len(todo_text_input_widget)>0 and len(todo_text_area_widget)>0):
             if (save_new_promptops_entry_to_DB(todo_text_input_widget,todo_text_area_widget,st.session_state.learning_component)):
                 st.success("Topic added successfully.")
-                time.sleep(2)
+                st.session_state.counter += 1
+                time.sleep(1)
                 st.rerun()
             else:
                 st.error("Failed to add topic. Use debug mode to check logs.")
+                if st.session_state.DEBUG:
+                    with st.sidebar:
+                        st.text("Failed at save a new learning entry"
+                            f"Error Log: {aws_error_log}")
 
     #todolist container
 
@@ -126,3 +151,6 @@ if st.session_state.authenticated:
 else:
     st.write("Please log in to view your conversation history.")
     st.page_link("./App.py", label="Log in", icon="🔒")
+
+if st.session_state.DEBUG:
+    get_session_states()

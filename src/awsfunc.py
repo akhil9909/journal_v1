@@ -32,6 +32,15 @@ def get_dynamodb_table_name_promptops():
         # If the environment variable is not set, default to a static name (for development)
         return 'dev_promptops' 
 
+#get dynamodb table name for promptops
+def get_dynamodb_table_name_static_prompt():
+    try:
+        # Attempt to fetch the table name from environment variables (for production)
+        table_name = os.environ['DYNAMODB_TABLE_STATIC_PROMPT']
+        return table_name
+    except KeyError:
+        # If the environment variable is not set, default to a static name (for development)
+        return 'dev_static_prompts' 
 
 def aws_log_error(message):
     aws_error_log.append(message)
@@ -80,7 +89,6 @@ def save_chat_history(thread_id, assistant_id, user_prompt, chat_history, Boolea
     except Exception as e:
         aws_log_error(f"Error saving chat history: {e}")
         return False  # Indicate failure
-    
 
 def get_openai_api_key():
 
@@ -256,6 +264,39 @@ def update_promptops_entry_to_DB(uuid_promptops, some_date_value, updated_descri
     except Exception as e:
         aws_log_error(f"Error updating promptops entry: {e}")
         return False  # Indicate failure
+######
+def fetch_static_prompts_from_DB() -> list:
+    sorted_items = []
+    try:
+        table_name = get_dynamodb_table_name_static_prompt()
+        table = dynamodb.Table(table_name)
+        response = table.scan()
+        items = response['Items']        
+    except ClientError as e:
+        aws_log_error(f"Error fetching static prompts: {e}")
+        raise e
+    return items
+######
+def update_static_prompt_to_DB(title,description):
+    try:
+        table_name = get_dynamodb_table_name_static_prompt()
+        table = dynamodb.Table(table_name)
+        table.update_item(
+            Key={
+            'title': title
+            },
+            UpdateExpression="SET description = :d",
+            ExpressionAttributeValues={
+            ':d': description
+            }
+        )
+        return True  # Indicate success
+    except Exception as e:
+        aws_log_error(f"Error updating static prompts: {e}")
+        return False  # Indicate failure
+
+
+######
 
 def delete_promptops_entry_from_DB(uuid_promptops, some_date_value):
     try:
@@ -291,3 +332,24 @@ def delete_promptops_entry_from_DB(uuid_promptops, some_date_value):
 #     except Exception as e:
 #         aws_log_error(f"Error updating do_not_stage flag: {e}")
 #         return False  # Indicate failure
+
+
+
+# def fetch_static_prompts_from_DB() -> list:
+#     sorted_items = []
+#     try:
+#         table_name = get_dynamodb_table_name_static_prompt()
+#         table = dynamodb.Table(table_name)
+#         response = table.scan()
+#         items = response['Items']
+        
+#         # Ensure 'description' key exists in items before sorting
+#         items_with_description = [item for item in items if 'description' in item]
+#         # Filter items by description is not null
+#         filtered_items = [item for item in items_with_description if item.get('description') not in [None, '']]
+#         # Sort items by title in ascending order
+#         sorted_items = sorted(filtered_items, key=lambda x: x['title'], reverse=False)
+#     except ClientError as e:
+#         aws_log_error(f"Error fetching static prompts: {e}")
+#         raise e
+#     return sorted_items
