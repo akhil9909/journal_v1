@@ -1,4 +1,5 @@
-
+#the root directory (ROOT_DIR) is defined explicity in the code, not imported from cached_functions.py
+#in App.py it is imported from cached_functions.py since its outside of the pages folder
 import boto3
 from boto3.dynamodb.conditions import Key
 from awsfunc import fetch_conversations
@@ -6,6 +7,7 @@ import streamlit as st
 from streamlit_session_states import get_session_states
 import time
 import yaml
+import os
 
 
 if 'DEBUG' not in st.session_state:
@@ -18,8 +20,15 @@ try:
 except KeyError:
     pass
 
+# Load configuration from YAML file
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+st.session_state.config_path = os.path.join(ROOT_DIR, 'src', 'mapping.yaml')
+
+if 'config_path' not in st.session_state:
+    st.session_state.config_path = "error in the file path to mapping.yaml"
+
 def load_session_state(thread_id, log,selected_assistant):
-    with open('/workspaces/journal_v1/src/mapping.yaml', 'r') as file:
+    with open(st.session_state.config_path, 'r') as file:
         assistant_mapping = yaml.safe_load(file)
     st.write("Navigating to the App page...")
     st.session_state.thread_id = thread_id

@@ -1,3 +1,5 @@
+#the root directory (ROOT_DIR) is defined in the cached_functions.py file. This variable is used to define the path to the mapping.yaml.
+#in other files the root direct is defined again since those files are under Pages, this is not necessary as the root directory is already defined in the cached_functions.py file
 import streamlit as st
 import openai
 import yaml
@@ -6,7 +8,7 @@ import json
 from functions import run_assistant, get_chat_history, get_chat_message, auto_save_chat_history
 from streamlit_session_states import get_session_states
 from awsfunc import save_chat_history, get_openai_api_key, get_credentials,save_feedback,aws_error_log
-from cached_functions import get_css
+from cached_functions import get_css, ROOT_DIR
 import base64
 import asyncio
 import time
@@ -79,6 +81,14 @@ try:
         st.session_state.DEBUG = True
 except KeyError:
     pass
+
+#file path to mapping.yaml
+# Load configuration from YAML file
+
+st.session_state.config_path = os.path.join(ROOT_DIR, 'src', 'mapping.yaml')
+
+if 'config_path' not in st.session_state:
+    st.session_state.config_path = "error in the file path to mapping.yaml"
 
 
 
@@ -154,7 +164,7 @@ if st.session_state.DEBUG:
 
 #selected_assistant = st.selectbox("Select Assistant", assistantid)
     # Load the assistant mapping from a YAML file
-with open('/workspaces/journal_v1/src/mapping.yaml', 'r') as file:
+with open(st.session_state.config_path, 'r') as file:
     assistant_mapping = yaml.safe_load(file)
 
 # Retrieve the assistant names from the YAML file
