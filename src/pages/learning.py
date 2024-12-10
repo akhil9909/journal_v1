@@ -11,7 +11,7 @@ if '/workspaces/journal_v1/src/' not in sys.path:
     sys.path.append('/workspaces/journal_v1/src/')
 #wirte if not exists
 
-from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB, aws_error_log
+from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB, aws_error_log, get_and_add_learning_components
 from functions import fetch_and_summarize_entries, generate_image_from_gpt,generate_image_prompt
 from streamlit_session_states import get_session_states
 
@@ -82,11 +82,30 @@ def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
                     st.text("Failed at delete learning entries"
                         f"Error Log: {aws_error_log}")
 
+
+
+
 if st.session_state.authenticated:
+    learning_component_names = get_and_add_learning_components('get','redundant','dev')
     learning_component = st.selectbox(
         'Select a Learning Component:',
-        ("Brene Brown","Bare Footed Coach","todo"),key='learning_component'
+        learning_component_names + ['Add New'],key='learning_component'
     )
+
+    if learning_component == 'Add New':
+        new_learning_component = st.text_input('Enter a new learning component name:', key='new_learning_component')
+        if st.button('Add'):
+            if new_learning_component:
+                if (get_and_add_learning_components('add',new_learning_component,'dev')):
+                    st.success(f'Learning component "{new_learning_component}" added successfully Please select it from the dropdown.')
+                    time.sleep(2)
+                st.rerun()
+            else:
+                st.warning('Error Adding a Learning Component: Please use DEBUG mode to check logs.')
+                if st.session_state.DEBUG:
+                    with st.sidebar:
+                        st.text("Failed at adding a new learning component"
+                            f"Error Log: {aws_error_log}")
 
     openai.api_key = get_openai_api_key()
 

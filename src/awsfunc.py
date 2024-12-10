@@ -189,6 +189,38 @@ def fetch_conversations() -> list:
         raise e
     return sorted_items
 
+
+# get and add learning components
+
+def get_and_add_learning_components(get_or_add,component_name,user_id):
+    try:
+        table_name = os.environ['LEARNING_COMPONENT_DYNAMODB_TABLE']
+    except KeyError:
+        table_name =  'learning_components_dev'
+    table = dynamodb.Table(table_name)
+    if get_or_add == 'get':
+        response = table.scan()
+        items = response['Items']
+        component_names = [item['component_name'] for item in items if item['user_id'] == user_id]
+        return component_names
+    elif get_or_add == 'add':
+        try: 
+            current_date = datetime.now().strftime('%Y-%m-%d')
+            user_component_name = user_id + '_' + component_name
+            table.put_item(
+                    Item={
+                        'user_component_name': user_component_name,
+                        'component_name': component_name,
+                        'date_component': current_date,
+                        'user_id': user_id
+                    }
+                )
+            return True
+        except Exception as e:
+            aws_log_error(f"Error adding learning component: {e}")
+            return False
+
+#Brene Brown Bare Footed Coach todo
 #in this function below, a default value of False is set for do_not_stage_flag. 
 #this is interesting beacuase, its not part of function callm so if we change the default value, we need to change the function call as well.
 #it is also difficult to guess because do not stage is not part of the ui where this function is called.
