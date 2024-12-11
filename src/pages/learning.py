@@ -18,8 +18,8 @@ from streamlit_session_states import get_session_states
 client = OpenAI(api_key=get_openai_api_key())
 
 #Session states
-if 'learning_component' not in st.session_state:
-    st.session_state['learning_component'] = "todo"
+# if 'learning_component' not in st.session_state:
+#     st.session_state['learning_component'] = "todo"
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 if 'counter' not in st.session_state:
