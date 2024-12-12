@@ -346,7 +346,7 @@ def delete_promptops_entry_from_DB(uuid_promptops, some_date_value):
         aws_log_error(f"Error deleting promptops entry: {e}")
         return False  # Indicate failure
 
-def download_and_save_image(image_url, component_name, user_id,img_prompt_text,summ_text):
+def download_and_save_image(image_url, component_name, user_id, img_prompt_text, summ_text):
     try: 
         image_response = requests.get(image_url)
         image_binary = image_response.content  # This will store the binary content of the image
