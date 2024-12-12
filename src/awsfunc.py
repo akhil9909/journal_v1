@@ -5,6 +5,7 @@ from botocore.exceptions import ClientError
 import logging
 from datetime import datetime
 import uuid
+import requests
 
 #aws_access_key_id = os.getenv('AWS_ACCESS_KEY')
 #aws_secret_access_key = os.getenv('AWS_SECRET_ACCESS_KEY')
@@ -345,7 +346,81 @@ def delete_promptops_entry_from_DB(uuid_promptops, some_date_value):
         aws_log_error(f"Error deleting promptops entry: {e}")
         return False  # Indicate failure
 
+def download_and_save_image(image_url, component_name, user_id):
+    try: 
+        image_response = requests.get(image_url)
+        image_binary = image_response.content  # This will store the binary content of the image
+    except Exception as e:
+        raise e
+        aws_log_error(f"Error downloading image: {e}")
+        return False  # Indicate failure
+    
+    try:
+        table_name = os.environ.get('IMAGE_METADATA_DYNAMODB_TABLE', 'image_metadata_dev')
+        table = dynamodb.Table(table_name)
+    except Exception as e:
+        raise e
+        aws_log_error(f"Error fetching image metadata table: {e}")
+        return False
+    
+    try:
+        s3 = boto3.client('s3')
+        bucket_name = os.environ.get('S3_BUCKET_NAME', 'streamlit-dev-bucket')
+        image_filename = f"{user_id}/{component_name}/{uuid.uuid4()}.jpg"
+        s3.put_object(Bucket=bucket_name, Key=image_filename, Body=image_binary, ContentType='image/jpeg')
+        table.put_item(
+            Item={
+                'image_url': image_filename,
+                'component_name': component_name,
+                'user_id': user_id,
+                'date_uploaded': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+        )
+        return True
+    except Exception as e:
+        raise e
+        aws_log_error(f"Error saving image to S3: {e}")
+        return False
+    
+def fetch_image_metadata(component_name, user_id):
+    try:
+        table_name = os.environ.get('IMAGE_METADATA_DYNAMODB_TABLE', 'image_metadata_dev')
+        table = dynamodb.Table(table_name)
+        response = table.scan()
+        items = response['Items']
+        filtered_items = [item for item in items if item['component_name'] == component_name and item['user_id'] == user_id and item.get('delete_request') != 'delete']
+        return [item['image_url'] for item in filtered_items]
+    except Exception as e:
+        aws_log_error(f"Error fetching image metadata: {e}")
+        return []
 
+def delete_image_metadata(image_url):
+    try:
+        table_name = os.environ.get('IMAGE_METADATA_DYNAMODB_TABLE', 'image_metadata_dev')
+        table = dynamodb.Table(table_name)
+        table.update_item(
+            Key={
+                'image_url': image_url
+            },
+            UpdateExpression="SET delete_request = :d",
+            ExpressionAttributeValues={
+                ':d': 'delete'
+            }
+        )
+        return True
+    except Exception as e:
+        aws_log_error(f"Error deleting image metadata: {e}")
+        return False
+
+def generate_presigned_url(image_url):
+    try:
+        s3 = boto3.client('s3')
+        bucket_name = os.environ.get('S3_BUCKET_NAME', 'streamlit-dev-bucket')
+        signed_url = s3.generate_presigned_url('get_object', Params={'Bucket': bucket_name, 'Key': image_url}, ExpiresIn=3600)
+        return signed_url
+    except Exception as e:
+        aws_log_error(f"Error creating signed image URL: {e}")
+        return None
 # def update_db_doNOT_stage_flag(uuid_promptops,date_promptops,do_not_stage_flag):
 #     try:
 #         table_name = get_dynamodb_table_name_promptops()

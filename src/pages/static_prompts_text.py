@@ -75,6 +75,7 @@ else:
 if st.session_state.DEBUG:
     get_session_states()
 
+# https://community.openai.com/t/dalle3-prompt-tips-and-tricks-thread/498040
 # # Initial prompt variables
 # generate_image_prompt_text = (
 #         "Create a visually clear and legible image or flowchart that depicts the relationships between the following topics. "
