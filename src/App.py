@@ -27,8 +27,15 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 if "thread_id" not in st.session_state:
-    thread = openai.beta.threads.create()
-    st.session_state.thread_id = thread.id
+    try: 
+        thread = openai.beta.threads.create()
+        st.session_state.thread_id = thread.id
+    except Exception as e:
+        st.error(f"An error occurred in creating chat thread. Please use DEBUG for error log")
+        if st.session_state.DEBUG:
+            with st.sidebar:
+                st.text(f"Failed at chat thread creation\nError Log: {e}")
+        st.stop()
 
 if "initial_prompt" not in st.session_state:
     st.session_state.initial_prompt = INITIAL_PROMPT;

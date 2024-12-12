@@ -11,7 +11,7 @@ if '/workspaces/journal_v1/src/' not in sys.path:
     sys.path.append('/workspaces/journal_v1/src/')
 #wirte if not exists
 
-from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB, aws_error_log, get_and_add_learning_components
+from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB, aws_error_log, get_and_add_learning_components,download_and_save_image, fetch_image_metadata, delete_image_metadata,generate_presigned_url
 from functions import fetch_and_summarize_entries, generate_image_from_gpt,generate_image_prompt
 from streamlit_session_states import get_session_states
 
@@ -26,6 +26,14 @@ if 'counter' not in st.session_state:
     st.session_state.counter = 0
 if "DEBUG" not in st.session_state:
     st.session_state.DEBUG = False
+if 'image_not_saved' not in st.session_state:
+    st.session_state.image_not_saved = True
+if 'learning_component_linked' not in st.session_state:
+    st.session_state.learning_component_linked = None
+if 'summarized_topics' not in st.session_state:
+    st.session_state.summarized_topics = None
+if 'image_prompt_text_for_this_summary' not in st.session_state:
+    st.session_state.image_prompt_text_for_this_summary = None
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
@@ -72,7 +80,6 @@ def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
     if(delete_box == "delete"):
         if (delete_promptops_entry_from_DB(uuid_promptops,date_promptops)):
             st.success("Entry deleted successfully.")
-            st.session_state.boolean_flag_to_show_topics = True #this is not required, remove it and chekc if it works
             time.sleep(2)
             st.rerun()
         else:
@@ -151,15 +158,47 @@ if st.session_state.authenticated:
         if (st.button('Summarize Staged Topics',type='primary')):
             st.header("Summary of Topics")
             summary = fetch_and_summarize_entries(st.session_state.learning_component)
-            st.write(summary)
+            st.session_state.summarized_topics = summary
             # Create a prompt for image generation
             image_prompt = generate_image_prompt(summary)
-            st.write(image_prompt)
-            
+            st.session_state.image_prompt_text_for_this_summary = image_prompt
             # Generate and display the infographic using OpenAI's image generation
             with st.spinner('Generating infographic...'):
-                image_url = generate_image_from_gpt(image_prompt)
-                st.image(image_url, caption="AI-Generated Topic Relationship Infographic", use_column_width=True)
+                st.session_state.image_url = generate_image_from_gpt(image_prompt)
+                st.session_state.image_not_saved = True
+                st.session_state.learning_component_linked = st.session_state.learning_component
+        #added in try block because st.session_state.learning_component_linked is not initialized
+        
+        if st.session_state.image_not_saved:
+            if 'image_url' in st.session_state and st.session_state.learning_component_linked == st.session_state.learning_component:
+                st.image(st.session_state.image_url, caption="AI-Generated Topic Relationship Infographic", use_column_width=True)
+                with st.expander("Prompt used for image generation"):
+                    st.caption(f":blue[image prompt: ]{st.session_state.image_prompt_text_for_this_summary}")
+                with st.expander("Summary of Topics Staged"):
+                    st.caption(f":red[Summary of Topics: ]{st.session_state.summarized_topics}")
+    
+        #the save should disappear after saved, used logic on not error``
+        if st.session_state.image_not_saved:
+            if st.button("Save", key="save image"):
+                if download_and_save_image(st.session_state.image_url, st.session_state.learning_component, 'dev'):
+                    st.success("Image saved successfully.")
+                    st.session_state.image_not_saved = False
+                    time.sleep(2)
+                    st.rerun()
+                else:
+                    st.error("Failed to save image. Use debug mode to check logs.")
+                    if st.session_state.DEBUG:
+                        with st.sidebar:
+                            st.text("Failed at save image"
+                                f"Error Log: {aws_error_log}")
+        st.subheader("Saved Images")
+        image_metadata = fetch_image_metadata(st.session_state.learning_component,'dev')
+        for image in reversed(image_metadata):
+            signed_url = generate_presigned_url(image)
+            st.image(signed_url, caption=image, use_column_width=True)
+            if st.button("Delete", key="delete_image"+image, on_click=delete_image_metadata, args=({image})):
+                time.sleep(2)
+                st.rerun()
         
         #  #Create and display the infographic using network X function
         #     with st.spinner('Generating infographic...'):
