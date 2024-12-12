@@ -180,7 +180,7 @@ if st.session_state.authenticated:
         #the save should disappear after saved, used logic on not error``
         if st.session_state.image_not_saved:
             if st.button("Save", key="save image"):
-                if download_and_save_image(st.session_state.image_url, st.session_state.learning_component, 'dev'):
+                if download_and_save_image(st.session_state.image_url, st.session_state.learning_component, 'dev',st.session_state.image_prompt_text_for_this_summary, st.session_state.summarized_topics):
                     st.success("Image saved successfully.")
                     st.session_state.image_not_saved = False
                     time.sleep(2)
