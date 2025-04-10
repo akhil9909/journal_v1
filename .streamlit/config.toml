@@ -1,2 +1,9 @@
 [theme]
 base="light"
+
+[server]
+runOnSave = false
+headless = true
+
+[server.sessionState]
+cookieExpirationDays = 30
