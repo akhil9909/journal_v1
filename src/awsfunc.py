@@ -278,7 +278,7 @@ def get_promptops_entries(type) -> list:
         raise e
     return sorted_items
     
-def update_promptops_entry_to_DB(uuid_promptops, some_date_value, updated_description,do_not_stage_value):
+def update_promptops_entry_to_DB(uuid_promptops, some_date_value, updated_description,do_not_stage_value,updated_title,changed_type):
     try:
         table_name = get_dynamodb_table_name_promptops()
         table = dynamodb.Table(table_name)
@@ -287,10 +287,15 @@ def update_promptops_entry_to_DB(uuid_promptops, some_date_value, updated_descri
             'date_promptops': some_date_value,  # Replace 'some_date_value' with the actual date value
             'uuid_promptops': uuid_promptops
             },
-            UpdateExpression="SET description = :d, do_not_stage = :e",
+            UpdateExpression="SET description = :d, do_not_stage = :e, title = :t, #ty = :ty",
+            ExpressionAttributeNames={
+                '#ty': 'type'
+            },
             ExpressionAttributeValues={
             ':d': updated_description,
-            ':e': do_not_stage_value
+            ':e': do_not_stage_value,
+            ':t': updated_title,
+            ':ty': changed_type
             }
         )
         return True  # Indicate success
