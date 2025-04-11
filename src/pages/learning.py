@@ -57,11 +57,19 @@ except KeyError:
 #MOdify the entries added in dev/todo
 @st.dialog("Modify Topic")
 def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
-    st.write("Topic:",title)
+    if st.checkbox("I Want to modify the component name", value=False):    
+        change_learning_component_names = get_and_add_learning_components('get','redundant','dev')
+        changed_learning_component = st.selectbox(
+            'Component:',
+            change_learning_component_names,key='changed_learning_component'
+        )
+    else:
+        changed_learning_component = st.session_state.learning_component
+    modified_title = st.text_input("Topic Heading",value=title,key='modify_text_input_key')
     modified_input = st.text_area("Edit the description below, Press Command/Ctrl Enter to Apply",value=description,key='modify_text_area_key')
     modified_stage_key = st.checkbox("Do not stage this topic for changes", value=do_not_stage)
     if st.button("Save"):
-        update_flag = update_promptops_entry_to_DB(uuid_promptops,date_promptops,modified_input,modified_stage_key)
+        update_flag = update_promptops_entry_to_DB(uuid_promptops,date_promptops,modified_input,modified_stage_key,modified_title,changed_learning_component)
         time.sleep(2)
         if update_flag:
             st.success("Changes saved successfully.")
