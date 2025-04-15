@@ -39,6 +39,16 @@ if "show_as_is" not in st.session_state:
 if "summarize_learning_component" not in st.session_state:
     st.session_state.summarize_learning_component = False
 
+if "counter_summarize_learning_component" not in st.session_state:
+    st.session_state.counter_summarize_learning_component = 0
+
+if "summary_of_component" not in st.session_state:
+    st.session_state.summary_of_component = ""
+
+if "increment_counter" not in st.session_state:
+    st.session_state.increment_counter = 0
+
+
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
     page_title="My Prompts",
@@ -77,6 +87,11 @@ def modify_instructions(promptops_assistant_id,instructions):
         except Exception as e:
             st.error(f"Error updating instructions: {e}")
     
+def reset_session_states_for_buttons():
+    st.session_state.show_as_is = False
+    st.session_state.summarize_learning_component = False
+    st.session_state.increment_counter = 0
+    st.session_state.counter_summarize_learning_component = 0
 
 if st.session_state.authenticated:
     openai.api_key = get_openai_api_key()
@@ -113,9 +128,9 @@ if st.session_state.authenticated:
         learning_component_names = get_and_add_learning_components('get','redundant','dev')
         learning_component_p = st.selectbox(
             'Select a Learning Component:',
-            learning_component_names,key='random1122'
+            learning_component_names,key='random1122',on_change=reset_session_states_for_buttons
         )
-        if st.button("Show as is",key="random123"):
+        if st.button("Show as is",key="random123",type="primary"):
             st.session_state.show_as_is = True
         
         if st.session_state.show_as_is:
@@ -123,39 +138,53 @@ if st.session_state.authenticated:
             for entry in reversed(entries):
                 st.write(entry['title'],divider="blue")
                 st.caption(entry['description'])
+            if st.button(":blue[hide or reset]", key="random444"):
+                st.session_state.show_as_is = False
+                st.rerun()
         
-        if st.button("Sumamrize Key Learnings",key="random789"):
+        st.divider()
+
+        if st.button("Sumamrize Key Learnings",key="random789",type="primary"):
             st.session_state.summarize_learning_component = True
+            st.session_state.increment_counter = st.session_state.counter_summarize_learning_component + 1
 
         if st.session_state.summarize_learning_component:
-            entries = get_promptops_entries(learning_component_p)
-            # Concatenate all titles and descriptions into a single input text
-            input_text = "\n\n".join(
-                f"Title: {entry['title']}\nDescription: {entry['description']}"
-                for entry in entries
-            )
-
-            try:
-                response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {"role": "system", "content": "You are an assistant that summarizes learning material."},
-                        {"role": "user", "content": f"Summarize key learnings and points from the following text data:\n\n{input_text}"}
-                    ],
-                    max_tokens=500,
-                    temperature=0.7,
+            if st.session_state.increment_counter > st.session_state.counter_summarize_learning_component:
+                entries = get_promptops_entries(learning_component_p)
+                # Concatenate all titles and descriptions into a single input text
+                input_text = "\n\n".join(
+                    f"Title: {entry['title']}\nDescription: {entry['description']}"
+                    for entry in entries
                 )
 
-                summary = response.choices[0].message.content.strip()
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {"role": "system", "content": "You are an assistant that summarizes learning material."},
+                            {"role": "user", "content": f"Summarize key learnings and points from the following text data:\n\n{input_text}"}
+                        ],
+                        max_tokens=500,
+                        temperature=0.7,
+                    )
+
+                    st.session_state.summary_of_component = response.choices[0].message.content.strip()
+                    
+                except Exception as e:
+                    st.error(f"Error generating summary: {e}")
                 
-                st.write("#### Summary of "+ learning_component_p + " :")
-                st.write(summary)
-            except Exception as e:
-                st.error(f"Error generating summary: {e}")
+            st.session_state.counter_summarize_learning_component = st.session_state.increment_counter
+            
+            st.write("#### Summary of "+ learning_component_p + " :")
+            st.write(st.session_state.summary_of_component)
+            if st.button(":blue[hide & reset]", key="random4444"):
+                st.session_state.summarize_learning_component = False
+                st.rerun()
 
     if st.button("double click to reset",key='random4455'):
         st.session_state.show_as_is = False
         st.session_state.summarize_learning_component = False
+        st.rerun()
 else:
     st.write("Please log in to view your conversation history.")
     st.page_link("./App.py", label="Log in", icon="🔒")
