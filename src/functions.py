@@ -32,6 +32,10 @@ def fetch_static_prompts():
             st.session_state.generate_image_prompt_text = description
         if title == "summarize_before_image_prompt_text":
             st.session_state.summarize_before_image_prompt_text = description
+        if title == "structure_assistant_instructions":
+            st.session_state.structure_assistant_instructions = description
+        if title == "add_notes_assistant_instructions":
+            st.session_state.add_notes_assistant_instructions = description
         st.write("------------------------------------------------")
     return
 
@@ -220,6 +224,18 @@ def generate_image_prompt(relationships_text):
     prompt = f"{st.session_state.generate_image_prompt_text}Relationships: {relationships_text}\n\n"
     return prompt
 
+def generate_assistant_instructions_prompt(assistant_instructions_text):
+    fetch_static_prompts()
+    prompt = f"{st.session_state.structure_assistant_instructions} Instructions: {assistant_instructions_text}\n\n"
+    return prompt
+
+def generate_add_notes_to_assistant_prompt(notes_text, notes_category,delta):
+    fetch_static_prompts()
+    #split the text into st.session_state.add_notes_assistant_instructions using | and save it in two variables pre_promot and post_prompt
+    pre_prompt, post_prompt = f"{st.session_state.add_notes_assistant_instructions}".split("|")
+    prompt = f"{pre_prompt} {notes_category} . {post_prompt} .\n\n[[[Instructions: {notes_text}..]]]\n\n additional {notes_category} are : {delta}\n\n"
+    return prompt
+
 # Call OpenAI's DALL-E API to generate an image
 def generate_image_from_gpt(prompt):
     response = client.images.generate(
@@ -231,6 +247,27 @@ def generate_image_from_gpt(prompt):
     )
     image_url = response.data[0].url
     return image_url
+
+def structure_assistant_instructions(assistant_instructions_text):
+    prompt = generate_assistant_instructions_prompt(assistant_instructions_text)
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Use "gpt-4" if you prefer that model
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content.strip()
+
+def preview_add_notes_function(notes_text, notes_category,delta):
+    prompt = generate_add_notes_to_assistant_prompt(notes_text, notes_category,delta)
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Use "gpt-4" if you prefer that model
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content.strip()
+
+    # Function to call openAI api with the structure assistant instruction prompt
+#function to call openAI api with the summarize assistant instruction prompt
+#use generate_assistant_instructions_prompt with gpt 4
+#remove session state insitaitliation in local function
 
 #archived functions
 
