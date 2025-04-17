@@ -44,7 +44,7 @@ def modify_static_prompt(title,description):
 #fetch the prompts from the database, create a fucntion to fetch the prompts
 #add m,pdify button and call dialog box
 
-def fetch_static_prompts():
+def fetch_static_prompts_local():
     static_prompts = fetch_static_prompts_from_DB()
     for prompt in static_prompts:
         title = prompt['title']
@@ -57,6 +57,8 @@ def fetch_static_prompts():
             st.session_state.generate_image_prompt_text = description
         if title == "summarize_before_image_prompt_text":
             st.session_state.summarize_before_image_prompt_text = description
+        if title == "structure_assistant_instructions":
+            st.session_state.structure_assistant_instructions = description
         st.write("------------------------------------------------")
     return
 
@@ -67,7 +69,7 @@ if st.session_state.authenticated:
         " New prompts will not be created here, but directly in code base and added in database manually."
         )
     st.caption("------------------------------------------------")
-    fetch_static_prompts()
+    fetch_static_prompts_local()
 else:
     st.write("Please log in to view your Static Prompts Page.")
     st.page_link("./App.py", label="Log in", icon="🔒")
