@@ -57,17 +57,21 @@ except KeyError:
 #MOdify the entries added in dev/todo
 @st.dialog("Modify Topic")
 def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
-    if st.checkbox("I Want to modify the component name", value=False):    
+    if st.checkbox("I Want to change the space for this note", value=False):    
         change_learning_component_names = get_and_add_learning_components('get','redundant','dev')
         changed_learning_component = st.selectbox(
-            'Component:',
+            'select the new space for this note:',
             change_learning_component_names,key='changed_learning_component'
         )
     else:
         changed_learning_component = st.session_state.learning_component
-    modified_title = st.text_input("Topic Heading",value=title,key='modify_text_input_key')
+    if title == "#":
+        modified_title = "#"
+    else:
+        modified_title = st.text_input("Topic Heading",value=title,key='modify_text_input_key')
+
     modified_input = st.text_area("Edit the description below, Press Command/Ctrl Enter to Apply",value=description,key='modify_text_area_key')
-    modified_stage_key = st.checkbox("Do not stage this topic for changes", value=do_not_stage)
+    modified_stage_key = st.checkbox("Do not stage this note for Visuals", value=do_not_stage)
     if st.button("Save"):
         update_flag = update_promptops_entry_to_DB(uuid_promptops,date_promptops,modified_input,modified_stage_key,modified_title,changed_learning_component)
         time.sleep(2)
@@ -103,18 +107,31 @@ def modify_entry(uuid_promptops,date_promptops,title,description,do_not_stage):
 if st.session_state.authenticated:
     learning_component_names = get_and_add_learning_components('get','redundant','dev')
     learning_component = st.selectbox(
-        'Select a Learning Component:',
+        'Select your space:',
         learning_component_names + ['Add New'],key='learning_component'
     )
 
     if learning_component == 'Add New':
-        new_learning_component = st.text_input('Enter a new learning component name:', key='new_learning_component')
+        new_learning_component = st.text_input(':blue[Enter your new space name:]', key='new_learning_component')
+        new_learning_component_description = st.text_area(':blue[What is this about? Is this space about work, a book, a lecture or something else?]', key='new_learning_component_description')
         if st.button('Add'):
             if new_learning_component:
                 if (get_and_add_learning_components('add',new_learning_component,'dev')):
-                    st.success(f'Learning component "{new_learning_component}" added successfully Please select it from the dropdown.')
-                    time.sleep(2)
-                st.rerun()
+                    if new_learning_component_description:
+                        try:
+                            save_new_promptops_entry_to_DB("#",new_learning_component_description,new_learning_component)
+                            st.success(f'Learning component "{new_learning_component}" added successfully Please select it from the dropdown.')
+                            time.sleep(2)
+                            st.rerun()
+                        except Exception as e:
+                            aws_error_log = aws_error_log + f"Error adding description: {e}"
+                            st.error(f"Error adding description: please use DEBUG mode to check logs.")
+                            if st.session_state.DEBUG:
+                                with st.sidebar:
+                                    st.text("Failed at adding a new learning component description"
+                                        f"Error Log: {aws_error_log}")
+                    else:
+                        st.error("Please provide a description for the new learning component.")
             else:
                 st.warning('Error Adding a Learning Component: Please use DEBUG mode to check logs.')
                 if st.session_state.DEBUG:
@@ -125,25 +142,35 @@ if st.session_state.authenticated:
     openai.api_key = get_openai_api_key()
 
 
+    #st.session_state.promptops_entries = get_promptops_entries(st.session_state.learning_component)
+    hash_entry = get_promptops_entries(st.session_state.learning_component)
+    for entry in reversed(hash_entry):
+        if "#" in entry['title']:
+            st.markdown("#### :blue[*About your space!*]")
+            st.write(entry['description'],divider="blue")
+            st.button("Edit", key='edit' + entry['uuid_promptops'], on_click=modify_entry, args=(entry['uuid_promptops'], entry['date_promptops'], entry['title'], entry['description'], entry['do_not_stage']))
+            st.divider()
+            
 
     col_a, col_b = st.columns(2, gap="medium")
 
     with col_a:
-        st.header(":gray[Topics for Staging]")
+        st.header(":gray[Add your notes]")
         entries = get_promptops_entries(st.session_state.learning_component)
         for entry in reversed(entries):
-            st.subheader(entry['title'],divider="blue")
-            if(entry['do_not_stage']):
-                st.caption(":old_key:[This will not be staged for changes]")
-                st.write(entry['description'])
-            else:
-                st.write(entry['description'])
-            st.button("Modify", key='modify'+entry['uuid_promptops'], on_click=modify_entry, args=(entry['uuid_promptops'],entry['date_promptops'],entry['title'],entry['description'],entry['do_not_stage']))
+            if "#" not in entry['title']:
+                st.subheader(entry['title'], divider="blue")
+                if entry['do_not_stage']:
+                    st.caption(":old_key:[This will not be staged for changes]")
+                    st.write(entry['description'])
+                else:
+                    st.write(entry['description'])
+                st.button("Modify", key='modify' + entry['uuid_promptops'], on_click=modify_entry, args=(entry['uuid_promptops'], entry['date_promptops'], entry['title'], entry['description'], entry['do_not_stage']))
                 
             
-        st.caption(":blue[Add a new topic]")
-        todo_text_input_widget = st.text_input('topic heading',key='todo_text_input_key'+str(st.session_state.counter)) #value=st.session_state.todo_text_input,
-        todo_text_area_widget = st.text_area('topic details |      :blue[Press Ctrl/Cmd Enter to Apply]',key='to_do_text_area_key'+str(st.session_state.counter)) #value=st.session_state.to_do_text_area,
+        #st.caption(":blue[Add a new topic]")
+        todo_text_input_widget = st.text_input('Title',key='todo_text_input_key'+str(st.session_state.counter)) #value=st.session_state.todo_text_input,
+        todo_text_area_widget = st.text_area('Details |      :blue[Press Ctrl/Cmd Enter to Apply]',key='to_do_text_area_key'+str(st.session_state.counter)) #value=st.session_state.to_do_text_area,
                     
         
         if(st.button('save', type='primary') and len(todo_text_input_widget)>0 and len(todo_text_area_widget)>0):
@@ -163,8 +190,8 @@ if st.session_state.authenticated:
 
     with col_b:
 
-        if (st.button('Summarize Staged Topics',type='primary')):
-            st.header("Summary of Topics")
+        if (st.button('Visualize your notes',type='primary')):
+            st.header("Summary of your notes")
             summary = fetch_and_summarize_entries(st.session_state.learning_component)
             st.session_state.summarized_topics = summary
             # Create a prompt for image generation
@@ -176,7 +203,12 @@ if st.session_state.authenticated:
                 st.session_state.image_not_saved = True
                 st.session_state.learning_component_linked = st.session_state.learning_component
         #added in try block because st.session_state.learning_component_linked is not initialized
-        
+
+        # if st.session_state.summarized_topics:
+        #     with st.expander(":green[*Summary of your notes*]", expanded=False):
+        #         st.caption(f":blue[{st.session_state.summarized_topics}]") 
+        #         #write a function to save the summary to the database, but a generic function rather than a specific one
+
         if st.session_state.image_not_saved:
             if 'image_url' in st.session_state and st.session_state.learning_component_linked == st.session_state.learning_component:
                 st.image(st.session_state.image_url, caption="AI-Generated Topic Relationship Infographic", use_column_width=True)
@@ -184,7 +216,7 @@ if st.session_state.authenticated:
                     st.caption(f":blue[image prompt: ]{st.session_state.image_prompt_text_for_this_summary}")
                 with st.expander("Summary of Topics Staged"):
                     st.caption(f":red[Summary of Topics: ]{st.session_state.summarized_topics}")
-    
+
         #the save should disappear after saved, used logic on not error``
         if st.session_state.image_not_saved:
             if st.button("Save", key="save image"):
@@ -207,7 +239,7 @@ if st.session_state.authenticated:
             if st.button("Delete", key="delete_image"+image, on_click=delete_image_metadata, args=({image})):
                 time.sleep(2)
                 st.rerun()
-        
+
         #  #Create and display the infographic using network X function
         #     with st.spinner('Generating infographic...'):
         #         infographic_buf = create_infographic(summary)
