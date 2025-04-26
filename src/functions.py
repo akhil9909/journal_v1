@@ -206,14 +206,29 @@ def auto_save_chat_history(run_res, selected_assistant,INITIAL_PROMPT,Boolean_Fl
 def fetch_and_summarize_entries(component):
     fetch_static_prompts()
     entries = get_promptops_entries(component)
-    filtered_entries = [entry['description'] for entry in entries if not entry.get('do_not_stage', False)]
+    filtered_entries = [
+        entry for entry in entries 
+        if not entry.get('do_not_stage', False) and entry['title'] != '#'
+    ]
+    
+    # Split the session_state.summarize_before_image_prompt_text into two parts
+    before_, after_ = st.session_state.summarize_before_image_prompt_text.split("|")
+    
+    # Create the about_this variable
+    about_this = next(
+        (entry['description'] for entry in entries if entry['title'] == '#'), 
+        ""
+    )
     
     if filtered_entries:
-        combined_text = " ".join(filtered_entries)
+        combined_text = " ".join(
+            f"Title: {entry['title']}, Description: {entry['description']}" 
+            for entry in filtered_entries
+        )
         
         response = client.chat.completions.create(
             model="gpt-4o",  # Use "gpt-4" if you prefer that model
-            messages=[{"role": "user", "content": f"{st.session_state.summarize_before_image_prompt_text}\n\nTopics: {', '.join(filtered_entries)}"}]
+            messages=[{"role": "user", "content": f"{before_} {about_this} {after_} {combined_text}"}]
         )
         return response.choices[0].message.content.strip()
 
@@ -221,7 +236,7 @@ def fetch_and_summarize_entries(component):
 #imgae prompt
 def generate_image_prompt(relationships_text):
     fetch_static_prompts()
-    prompt = f"{st.session_state.generate_image_prompt_text}Relationships: {relationships_text}\n\n"
+    prompt = f"{st.session_state.generate_image_prompt_text} Summary: {relationships_text}\n\n"
     return prompt
 
 def generate_assistant_instructions_prompt(assistant_instructions_text):
