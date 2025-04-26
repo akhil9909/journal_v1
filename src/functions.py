@@ -9,6 +9,8 @@ from awsfunc import save_chat_history, aws_error_log, get_promptops_entries,get_
 import time
 from openai import OpenAI
 import sys
+from collections import defaultdict
+import json
 
 if '/workspaces/journal_v1/src/pages' not in sys.path:
     sys.path.append('/workspaces/journal_v1/src/pages')
@@ -221,7 +223,7 @@ def fetch_and_summarize_entries(component):
     )
     
     if filtered_entries:
-        combined_text = " ".join(
+        combined_text = "\n".join(
             f"Title: {entry['title']}, Description: {entry['description']}" 
             for entry in filtered_entries
         )
@@ -233,11 +235,6 @@ def fetch_and_summarize_entries(component):
         return response.choices[0].message.content.strip()
 
     return "No topics to summarize."
-#imgae prompt
-def generate_image_prompt(relationships_text):
-    fetch_static_prompts()
-    prompt = f"{st.session_state.generate_image_prompt_text} Summary: {relationships_text}\n\n"
-    return prompt
 
 def generate_assistant_instructions_prompt(assistant_instructions_text):
     fetch_static_prompts()
@@ -262,6 +259,51 @@ def generate_image_from_gpt(prompt):
     )
     image_url = response.data[0].url
     return image_url
+    #return "https://streamlit-prod-bucket.s3.amazonaws.com/dev/Brene%20Brown/572a86b7-5bb4-4280-88a3-ec83bf50f9b4.jpg?AWSAccessKeyId=ASIA6ALM6IM5ZJ7YEKB5&Signature=MZqD9mqMoznZAZr4W9smCMnyqYo%3D&x-amz-security-token=IQoJb3JpZ2luX2VjEKb%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLXdlc3QtMiJIMEYCIQCVP8xNfevS6twGgCYvXjwL2SK5i3lSx%2B0i8o1PAke55QIhAI1JS0C7eBpM1w7A0ZlWfhWwk3o1M%2F8iKlaYF0yyKOD%2BKrsFCD8QARoMOTYyODM4MDIwOTIzIgwyLY%2FbQqHY765YKpgqmAVA%2BcQ1DrL04sI%2BLMX2WhJc90jkZPr76fD5GlKwM75mpTfKSf0eEXSQPGQprPZ0iJ%2BglncfQ4Xms1wGUcPN2cVJdL7%2FeGqFvA%2B%2BYwJ64h%2Fwd6Q268DfIT7pQyHrax%2Bns2Zcxb7YoYIR6o10vRtM9NAguLa0GigQdIDlfICvCIT1zBy8NJ22QqTyzvprLHH%2BFFDdvIgDlEDpCBzchorR5rru5hyXTm7blTumM9%2Fkt2C4w11jLYILpoNvDCrYttY8tqYwzyPqBjD%2FpvnevjSiuOYOM%2F7ikFeIMUH4qypo59UO3vRWXJwnrMk%2FThNMuEu4R9CH1uQm3PGMs3Wta%2BwqiaopAd85VkWNaZtM8uCAToZg5SXDFxZbY4V5pZmK4Cu6kMxw0USgw%2BrHeGQUGgCAnxJ6IZ8g9Vimv2ZodV0FWFAqH0oF5H9PyObLEn7UBjy29eus%2BMfvwTit7cEHYGiNT8%2FsZ3j57yU453NMtbfkm1cLaVVz5tW%2Fv8%2FBVgbVppo1UPav4giCz2UNh058STQqkaQ4R9ul7B7xrxQ5fjljdEOVvIAXgag1WYTDR3tcSYo463IgpuNOXYvu6XMajiaEdph28dU4LFDa%2F7bEF%2FOxN2ZsSlAWtQn%2Bk0e62BI06hILrNfux5PyFFIt167QUURQ6KOSm%2BTG%2F6W1BeEyd99HonCdPp%2FLlFr4j0iAGJRkz%2BN%2BV2BWctenxd0NKFZNdx0A4YqYJO%2B4z19MzJcBsB8jMFhWfBUYSvYZWJwjtYLqu1Rfu7TP1%2BfWq6Q%2FuqTC1R4a5zZg19z1Hmy42wDSm3J2vELBng8Nbrz2UOk%2FLqAVgKEcfqD7izHRcMuqHbjRbrPwEk%2FuROH%2FDlpOUOUIaYFjp%2F2urfKu98ak2rnuMOvqscAGOrABhmbZi61Si7ITPEJaOKxommD5jcRjsb8zfjn%2Bk0qWwofL9Y%2B0oVwuBe6KlVdf5b1%2BXhcg%2BpvhqA3D6%2FPhYZyu6YCkwBFnAkdjvWCWPgK3NMzfSxNw%2BkWgc48qBvzQY2dDNVT7GUFDUxbkagFOHAicp1Y07Fhvd0UyS3s%2BKK3tZ12uRkhwmya1a84q1%2Bv6OdCUjL1TbdOXr6TsWTubkBJWKCHBhnPjWxcXPP4HJ%2FC%2FpYU%3D&Expires=1745652781"
+
+
+# Function to generate text for each cluster
+
+def get_theme_strings(data):
+    clusters = defaultdict(list)
+    
+    # Group items by cluster name
+    for item in data:
+        cluster = item["cluster name"]
+        title = item["title"]
+        description = item["description"]
+        clusters[cluster].append(f"title: {title}, description: {description}")
+    
+    # Create a list of strings, each representing a cluster
+    theme_strings = []
+    for cluster_name, entries in clusters.items():
+        combined_text = f"Theme: {cluster_name}, \n" + " \n".join(entries)
+        theme_strings.append(combined_text)
+    
+    return theme_strings
+
+
+
+#imgae prompt
+def generate_image_prompt(json_structure_from_summarize_function):
+    parsed_data = json.loads(json_structure_from_summarize_function)
+    fetch_static_prompts()
+    themes = get_theme_strings(parsed_data)
+    
+    img_urls = []
+    img_alt_texts = []
+    
+    for theme in themes:
+        prompt = f"{st.session_state.generate_image_prompt_text} Concept: {theme}\n"
+        img_url = generate_image_from_gpt(prompt)
+        img_alt_text = f"Image for {theme}"
+        
+        img_urls.append(img_url)
+        img_alt_texts.append(img_alt_text)
+    
+    return img_urls, img_alt_texts
+
+
 
 def structure_assistant_instructions(assistant_instructions_text):
     prompt = generate_assistant_instructions_prompt(assistant_instructions_text)
