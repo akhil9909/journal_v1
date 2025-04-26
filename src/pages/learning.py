@@ -12,7 +12,7 @@ if '/workspaces/journal_v1/src/' not in sys.path:
 #wirte if not exists
 
 from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB, aws_error_log, get_and_add_learning_components,download_and_save_image, fetch_image_metadata, delete_image_metadata,generate_presigned_url
-from functions import fetch_and_summarize_entries, generate_image_from_gpt,generate_image_prompt
+from functions import fetch_and_summarize_entries,generate_image_prompt
 from streamlit_session_states import get_session_states
 
 client = OpenAI(api_key=get_openai_api_key())
@@ -32,8 +32,8 @@ if 'learning_component_linked' not in st.session_state:
     st.session_state.learning_component_linked = None
 if 'summarized_topics' not in st.session_state:
     st.session_state.summarized_topics = None
-if 'image_prompt_text_for_this_summary' not in st.session_state:
-    st.session_state.image_prompt_text_for_this_summary = None
+if 'image_alt_text_values' not in st.session_state:
+    st.session_state.image_alt_text_values = []
 
 ### MAIN STREAMLIT UI STARTS HERE ###
 st.set_page_config(
@@ -194,12 +194,14 @@ if st.session_state.authenticated:
             st.header("Summary of your notes")
             summary = fetch_and_summarize_entries(st.session_state.learning_component)
             st.session_state.summarized_topics = summary
+            #st.write("Raw response:", summary)
             # Create a prompt for image generation
-            image_prompt = generate_image_prompt(summary)
-            st.session_state.image_prompt_text_for_this_summary = image_prompt
+            #image_prompt = generate_image_prompt(summary)
+            #st.session_state.image_alt_text_value = image_prompt
             # Generate and display the infographic using OpenAI's image generation
             with st.spinner('Generating infographic...'):
-                st.session_state.image_url = generate_image_from_gpt(image_prompt)
+                st.session_state.image_urls, image_alt_texts = generate_image_prompt(summary)
+                st.session_state.image_alt_text_values = image_alt_texts
                 st.session_state.image_not_saved = True
                 st.session_state.learning_component_linked = st.session_state.learning_component
         #added in try block because st.session_state.learning_component_linked is not initialized
@@ -210,27 +212,30 @@ if st.session_state.authenticated:
         #         #write a function to save the summary to the database, but a generic function rather than a specific one
 
         if st.session_state.image_not_saved:
-            if 'image_url' in st.session_state and st.session_state.learning_component_linked == st.session_state.learning_component:
-                st.image(st.session_state.image_url, caption="AI-Generated Topic Relationship Infographic", use_column_width=True)
-                with st.expander("Prompt used for image generation"):
-                    st.caption(f":blue[image prompt: ]{st.session_state.image_prompt_text_for_this_summary}")
-                with st.expander("Summary of Topics Staged"):
-                    st.caption(f":red[Summary of Topics: ]{st.session_state.summarized_topics}")
+            if 'image_urls' in st.session_state and st.session_state.learning_component_linked == st.session_state.learning_component:
+                for image_url, image_alt_text_value in zip(st.session_state.image_urls, st.session_state.image_alt_text_values):
+                    st.session_state.image_url = image_url
+                    st.session_state.image_alt_text_value = image_alt_text_value
+                    st.image(st.session_state.image_url, caption="AI-Generated Topic Relationship Infographic", use_column_width=True)
+                    with st.expander("Notes for this image"):
+                        st.caption(f"{st.session_state.image_alt_text_value}")
+                    
+                    if download_and_save_image(st.session_state.image_url, st.session_state.learning_component, 'dev',st.session_state.image_alt_text_value, st.session_state.summarized_topics):
+                        st.success("downloading and saving images")
+                        #keep a session state as True, and update ot False on any error here, in each iteration of loop, just and to previou state, 
+                        # so false is captured and you show st.error in th end before setting the image saved session state to false
+                    else:
+                        if st.session_state.DEBUG:
+                            with st.sidebar:
+                                st.text("Failed at save image"
+                                    f"Error Log: {aws_error_log}")
+                with st.expander("Clustering raw data"):
+                    st.caption(f"{st.session_state.summarized_topics}")
+                
+                st.session_state.image_not_saved = False
+                    #show this only when debug is on
 
         #the save should disappear after saved, used logic on not error``
-        if st.session_state.image_not_saved:
-            if st.button("Save", key="save image"):
-                if download_and_save_image(st.session_state.image_url, st.session_state.learning_component, 'dev',st.session_state.image_prompt_text_for_this_summary, st.session_state.summarized_topics):
-                    st.success("Image saved successfully.")
-                    st.session_state.image_not_saved = False
-                    time.sleep(2)
-                    st.rerun()
-                else:
-                    st.error("Failed to save image. Use debug mode to check logs.")
-                    if st.session_state.DEBUG:
-                        with st.sidebar:
-                            st.text("Failed at save image"
-                                f"Error Log: {aws_error_log}")
         st.subheader("Saved Images")
         image_metadata = fetch_image_metadata(st.session_state.learning_component,'dev')
         for image in reversed(image_metadata):
