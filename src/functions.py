@@ -285,7 +285,7 @@ def get_theme_strings(data):
 
 def summary_4000(text):
  # Split the text into chunks of 3800 characters and summarize
-    prompt = f"Summarize the following text within 3800 characters, please output only the summarized output without any explanation:\n\n{text}"
+    prompt = f"Summarize the following text within 3500 characters, please output only the summarized output without any explanation:\n\n{text}"
     response = client.chat.completions.create(
         model="gpt-4o",  # Use "gpt-4" if you prefer that model
         messages=[{"role": "user", "content": prompt}]
