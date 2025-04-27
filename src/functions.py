@@ -283,7 +283,14 @@ def get_theme_strings(data):
     
     return theme_strings
 
-
+def summary_4000(text):
+ # Split the text into chunks of 3800 characters and summarize
+    prompt = f"Summarize the following text within 3800 characters, please output only the summarized output without any explanation:\n\n{text}"
+    response = client.chat.completions.create(
+        model="gpt-4o",  # Use "gpt-4" if you prefer that model
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content.strip()
 
 #imgae prompt
 def generate_image_prompt(json_structure_from_summarize_function):
@@ -296,6 +303,8 @@ def generate_image_prompt(json_structure_from_summarize_function):
     img_alt_texts = []
     
     for theme in themes:
+        if len(theme) > 4000:
+            theme = summary_4000(theme)
         prompt = f"{st.session_state.generate_image_prompt_text} Concept: {theme}\n"
         img_url = generate_image_from_gpt(prompt)
         img_alt_text = f"Image for {theme}"
