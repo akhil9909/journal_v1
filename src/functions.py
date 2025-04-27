@@ -11,6 +11,7 @@ from openai import OpenAI
 import sys
 from collections import defaultdict
 import json
+import re
 
 if '/workspaces/journal_v1/src/pages' not in sys.path:
     sys.path.append('/workspaces/journal_v1/src/pages')
@@ -233,8 +234,8 @@ def fetch_and_summarize_entries(component):
             messages=[{"role": "user", "content": f"{before_} {about_this} {after_} {combined_text}"}]
         )
         return response.choices[0].message.content.strip()
-
-    return "No topics to summarize."
+    else:
+        return "No topics to summarize."
 
 def generate_assistant_instructions_prompt(assistant_instructions_text):
     fetch_static_prompts()
@@ -286,7 +287,8 @@ def get_theme_strings(data):
 
 #imgae prompt
 def generate_image_prompt(json_structure_from_summarize_function):
-    parsed_data = json.loads(json_structure_from_summarize_function)
+    
+    parsed_data = json.loads(re.sub(r'[\x00-\x1F\x7F]+', '', json_structure_from_summarize_function ))
     fetch_static_prompts()
     themes = get_theme_strings(parsed_data)
     
