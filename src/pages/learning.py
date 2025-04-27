@@ -12,8 +12,9 @@ if '/workspaces/journal_v1/src/' not in sys.path:
 #wirte if not exists
 
 from awsfunc import get_openai_api_key, save_new_promptops_entry_to_DB, get_promptops_entries,update_promptops_entry_to_DB,delete_promptops_entry_from_DB, aws_error_log, get_and_add_learning_components,download_and_save_image, fetch_image_metadata, delete_image_metadata,generate_presigned_url
-from functions import fetch_and_summarize_entries,generate_image_prompt
+from functions import get_promptops_entries, fetch_static_prompts, generate_image_prompt,fetch_and_summarize_entries
 from streamlit_session_states import get_session_states
+#from learning_functions import *
 
 client = OpenAI(api_key=get_openai_api_key())
 
