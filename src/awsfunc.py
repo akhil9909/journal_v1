@@ -43,6 +43,16 @@ def get_dynamodb_table_name_static_prompt():
         # If the environment variable is not set, default to a static name (for development)
         return 'dev_static_prompts' 
 
+#get dynamodb table name for FILE_IDS_DYNAMODB_TABLE
+def get_dynamodb_table_name_file_ids():
+    try:
+        # Attempt to fetch the table name from environment variables (for production)
+        table_name = os.environ['FILE_IDS_DYNAMODB_TABLE']
+        return table_name
+    except KeyError:
+        # If the environment variable is not set, default to a static name (for development)
+        return 'file_ids_dev'
+
 def aws_log_error(message):
     aws_error_log.append(message)
     logging.error(message)
@@ -190,6 +200,17 @@ def fetch_conversations() -> list:
         raise e
     return sorted_items
 
+def fetch_thread_ids(assistant_id) -> list:
+    try:
+        table_name = get_dynamodb_table_name()
+        table = dynamodb.Table(table_name)
+        response = table.scan()
+        items = response['Items']
+        thread_ids = [item['thread_id'] for item in items if item.get('assistant') == assistant_id]
+        return thread_ids
+    except Exception as e:
+        aws_log_error(f"Error fetching thread_ids for assistant {assistant_id}: {e}")
+        return []
 
 # get and add learning components
 
@@ -428,6 +449,58 @@ def generate_presigned_url(image_url):
     except Exception as e:
         aws_log_error(f"Error creating signed image URL: {e}")
         return None
+
+def save_file_ids(file_id, assistant_id, assistant_name,file_name):
+    try:
+        table_name = os.environ.get('FILE_IDS_DYNAMODB_TABLE', 'file_ids_dev')
+        table = dynamodb.Table(table_name)
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        table.put_item(
+            Item={
+                'file_id': file_id,
+                'file_name': file_name,
+                'assistant_id': assistant_id,
+                'assistant_name': assistant_name,
+                'date_uploaded': current_date,
+                'datetime_uploaded': current_datetime
+            }
+        )
+        return True
+    except Exception as e:
+        aws_log_error(f"Error saving file IDs: {e}")
+        return False
+
+def delete_file_id(file_id):
+    try:
+        table_name = os.environ.get('FILE_IDS_DYNAMODB_TABLE', 'file_ids_dev')
+        table = dynamodb.Table(table_name)
+        table.update_item(
+            Key={
+                'file_id': file_id
+            },
+            UpdateExpression="SET delete_flag = :d",
+            ExpressionAttributeValues={
+                ':d': True
+            }
+        )
+        return True
+    except Exception as e:
+        aws_log_error(f"Error setting delete_flag for file ID: {e}")
+        return False
+
+def fetch_file_ids(assistant_id):
+    try:
+        table_name = os.environ.get('FILE_IDS_DYNAMODB_TABLE', 'file_ids_dev')
+        table = dynamodb.Table(table_name)
+        response = table.scan()
+        items = response['Items']
+        filtered_items = [item for item in items if item.get('assistant_id') == assistant_id and item.get('delete_flag') != True]
+        return [item['file_id'] for item in filtered_items]
+    except Exception as e:
+        aws_log_error(f"Error fetching file IDs: {e}")
+        return []
+    
 # def update_db_doNOT_stage_flag(uuid_promptops,date_promptops,do_not_stage_flag):
 #     try:
 #         table_name = get_dynamodb_table_name_promptops()

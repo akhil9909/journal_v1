@@ -7,7 +7,7 @@ import os
 import json
 from functions import run_assistant, get_chat_history, get_chat_message, auto_save_chat_history
 from streamlit_session_states import get_session_states
-from awsfunc import save_chat_history, get_openai_api_key, get_credentials,save_feedback,aws_error_log
+from awsfunc import save_chat_history, get_openai_api_key, get_credentials,save_feedback,aws_error_log,fetch_file_ids
 from cached_functions import get_css, ROOT_DIR
 import base64
 import asyncio
@@ -23,13 +23,19 @@ openai.api_key = get_openai_api_key()
 INITIAL_PROMPT = "User prompt empty"
 
 # Initialize session states
+
+if 'files_attached' not in st.session_state:
+    st.session_state.files_attached = True
+
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 if "thread_id" not in st.session_state:
     try: 
         thread = openai.beta.threads.create()
+        #change this thread creation later so that its not created before the authentication and first prompt
         st.session_state.thread_id = thread.id
+        st.session_state.files_attached = False
     except Exception as e:
         st.error(f"An error occurred in creating chat thread. Please use DEBUG for error log")
         if st.session_state.DEBUG:
@@ -112,6 +118,7 @@ def reset_session() -> dict:
     st.session_state.input_text = ""
     st.session_state.feedback = ""
     st.session_state.other_feedback = ""
+    st.session_state.files_attached = False
     st.session_state.initial_prompt = INITIAL_PROMPT
     try:
         thread = openai.beta.threads.create()
@@ -353,6 +360,46 @@ with prompt_box:
             human_prompt =  st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
 
 if st.session_state.authenticated:
+    if not st.session_state.files_attached:
+        file_ids = fetch_file_ids(promptops_assistant_id)
+        if file_ids and st.session_state.get("thread_id"):
+            try:
+                # Attach each file individually as a separate attachment
+                attachments = [
+                    {
+                        "file_id": file_id,
+                        "tools": [{"type": "file_search"}]
+                    }
+                    for file_id in file_ids
+                ]
+                if st.session_state.DEBUG:
+                    st.sidebar.write(f"Attaching files to thread: {attachments}")
+                openai.beta.threads.messages.create(
+                    thread_id=st.session_state.thread_id,
+                    role="user",
+                    content="Here are files to consider.",
+                    attachments=attachments
+                )
+                if st.session_state.DEBUG:
+                    run = openai.beta.threads.runs.create(
+                    thread_id=st.session_state.thread_id,
+                    assistant_id=promptops_assistant_id  # Required here
+                    )
+                    while run.status not in ["completed", "failed", "cancelled", "expired"]:
+                        st.sidebar.write(f"Waiting... current run status: {run.status}")
+                        time.sleep(2)
+                        run = openai.beta.threads.runs.retrieve(
+                            thread_id=st.session_state.thread_id,
+                            run_id=run.id
+                        )
+
+                    st.sidebar.write(f"Final run status: {run.status}")
+                st.session_state.files_attached = True
+            except Exception as e:
+                if st.session_state.DEBUG:
+                    st.sidebar.write(f"Failed to attach files to thread: {e}")
+
+
     run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}",type='primary')
 
 if st.session_state.main_called_once:

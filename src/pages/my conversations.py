@@ -34,6 +34,7 @@ def load_session_state(thread_id, log,selected_assistant):
     st.session_state.thread_id = thread_id
     st.session_state.LOG = log
     st.session_state.main_called_once = True
+    st.session_state.files_attached = True # you dont want the conversation to attach the file when it goes to app.py
     st.session_state.assistant = selected_assistant
     for key, value in assistant_mapping['assistants'].items():
         if value == st.session_state.assistant:
