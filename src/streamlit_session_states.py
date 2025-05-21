@@ -35,6 +35,10 @@ def get_session_states():
         st.write(f"summarized topics: {st.session_state.get('summarized_topics', 'Not set')}")
         st.write(f"image_prompt_text_for_this_summary: {st.session_state.get('image_prompt_text_for_this_summary', 'Not set')}")
         st.write(f"files_attached to the thread: {st.session_state.get('files_attached', 'Not set')}")
+        st.write(f"recent_response_AI: {st.session_state.get('recent_response_AI', 'Not set')}")
+        st.write(f"recent_response_human: {st.session_state.get('recent_response_human', 'Not set')}")
+        st.write(f"recent_deadclick: {st.session_state.get('recent_deadclick', 'Not set')}")
+        st.write(f"dummy_check: {st.session_state.get('dummy_check', 'Not set')}")
         #from my conversations.py
         #no additional session states, but following are loaded in a fucntion here to navigate to App.py
         #those are thread_id, LOG, main_called_once, assistant

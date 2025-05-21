@@ -50,6 +50,7 @@ jobs:
           export DYNAMODB_TABLE_STATIC_PROMPT="prod_static_prompts"
           export FILE_IDS_DYNAMODB_TABLE="file_ids_prod"
           export IMAGE_METADATA_DYNAMODB_TABLE="image_metadata_prod"
+          export REMEMBER_ME_DYNAMODB_TABLE="user_thread_episodes_prod"
           export S3_BUCKET_NAME="streamlit-prod-bucket"
           nohup streamlit run src/App.py > streamlit.log 2>&1 &
           disown

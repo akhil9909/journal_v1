@@ -206,7 +206,11 @@ def fetch_thread_ids(assistant_id) -> list:
         table = dynamodb.Table(table_name)
         response = table.scan()
         items = response['Items']
-        thread_ids = [item['thread_id'] for item in items if item.get('assistant') == assistant_id]
+        if assistant_id == 'all':
+            thread_ids = [item['thread_id'] for item in items]
+        else:
+            # Filter items by assistant_id
+            thread_ids = [item['thread_id'] for item in items if item.get('assistant') == assistant_id]
         return thread_ids
     except Exception as e:
         aws_log_error(f"Error fetching thread_ids for assistant {assistant_id}: {e}")
@@ -500,7 +504,57 @@ def fetch_file_ids(assistant_id):
     except Exception as e:
         aws_log_error(f"Error fetching file IDs: {e}")
         return []
-    
+
+def remember_me(user_id, thread_id, ai_response, user_prompt):
+    try:
+        table_name = os.environ.get('REMEMBER_ME_DYNAMODB_TABLE', 'user_thread_episodes_dev')
+        table = dynamodb.Table(table_name)
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        current_datetime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        primary_key = f"{user_id}_{current_datetime}"
+        table.put_item(
+            Item={
+                'user_datetime': primary_key,
+                'user_id': user_id,
+                'thread_id': thread_id,
+                'ai_response': ai_response,
+                'user_prompt': user_prompt,
+                'date_uploaded': current_date,
+                'datetime_uploaded': current_datetime
+            }
+        )
+        return True
+    except Exception as e:
+        aws_log_error(f"Error saving remember me entry: {e}")
+        return False
+
+def get_user_episodes(user_id):
+    try:
+        table_name = os.environ.get('REMEMBER_ME_DYNAMODB_TABLE', 'user_thread_episodes_dev')
+        table = dynamodb.Table(table_name)
+        response = table.scan()
+        items = response.get('Items', [])
+        # Filter items for the given user_id
+        filtered_items = [item for item in items if item.get('user_id') == user_id]
+        text_blob = ""
+        for item in filtered_items:
+            user_prompt = item.get('user_prompt', '')
+            ai_response = item.get('ai_response', '')
+            text_blob += f'user prompt: {user_prompt}\nResponse to this user prompt: "{ai_response}"\n'
+        return text_blob
+    except Exception as e:
+        aws_log_error(f"Error fetching user episodes for {user_id}: {e}")
+        return ""
+
+
+#do the code
+def dummy(dev, text_blob):
+    None        #     except Exception as e:
+            #         st.error(f"Failed to send message to thread {thread_id}: {e}")
+
+            # st.success(f"File uploaded successfully! File ID: {file_response.id}")
+
+
 # def update_db_doNOT_stage_flag(uuid_promptops,date_promptops,do_not_stage_flag):
 #     try:
 #         table_name = get_dynamodb_table_name_promptops()

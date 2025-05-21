@@ -10,7 +10,7 @@ if '/workspaces/journal_v1/src/' not in sys.path:
 #if '/workspaces/journal_v1/src/pages/' not in sys.path:
 #    sys.path.append('/workspaces/journal_v1/src/pages/')
 
-from awsfunc import get_openai_api_key, get_promptops_entries, aws_error_log, get_and_add_learning_components,save_file_ids,delete_file_id,fetch_thread_ids
+from awsfunc import get_openai_api_key, get_promptops_entries, aws_error_log, get_and_add_learning_components,save_file_ids,delete_file_id,fetch_thread_ids,get_user_episodes
 from functions import get_promptops_entries, fetch_static_prompts
 from streamlit_session_states import get_session_states
 #from learning_functions import *
@@ -205,6 +205,64 @@ if st.session_state.authenticated:
 
     # Add to Agent button
     st.button("Add to Agent", key='add_to_agent', type='primary', on_click=save_file_to_agent)
+    if st.button("Sync remember-me episodes with Agent", key='sync_episodes'):
+        episodes_text_blob = get_user_episodes('dev')
+        if episodes_text_blob is not None and episodes_text_blob != "":
+            user_id = 'dev'
+            files_response_episodes = client.files.list()
+            episodes = files_response_episodes.data  # list of files
+
+            # Check if file with the same name exists
+            file_name_episodes = f"{user_id}_episodes.txt"
+            existing_file_episodes = next((f for f in episodes if f.filename == file_name_episodes), None)
+
+
+                # If exists, delete it
+            if existing_file_episodes:
+                st.info(f"Old file '{file_name_episodes}' found. Deleting it...")
+                delete_file_id(existing_file_episodes.id)
+                client.files.delete(existing_file_episodes.id)
+                st.success(f"Old file '{file_name_episodes}' deleted.")
+
+            # Upload new file
+            file_like_episodes = BytesIO(episodes_text_blob.encode('utf-8'))
+            file_like_episodes.name = file_name_episodes
+
+            file_response = client.files.create(
+                file=file_like_episodes,
+                purpose="assistants"
+            )
+
+            st.success(f"New file '{file_name_episodes}' added.")
+
+            # For each thread_id, send a message to the thread with the new file id
+            #only attaching to all threads, but its a user memory, so differentiate on user later
+            all_assistants = "all"
+            
+            thread_ids = fetch_thread_ids(all_assistants)
+            st.session_state.dummy_check = thread_ids
+            for thread_id in thread_ids:
+                st.success(f"Thread ID: {thread_id}")
+                try:
+                #add the file to all the threads in the code
+                    client.beta.threads.messages.create(
+                        thread_id=thread_id,
+                        role="user",
+                        content="Here's a new file I'd like you to consider.",
+                        attachments=[
+                            {
+                                "file_id": file_response.id,
+                                "tools": [{"type": "file_search"}]
+                            }
+                        ]
+                        )
+                    
+                    if st.session_state.DEBUG:
+                        st.write(f"Message sent to thread: {thread_id}")
+                except Exception as e:
+                    st.error(f"Failed to send message to thread {thread_id}: {e}")
+                st.success(f"File uploaded successfully to C360 threads! File ID: {file_response.id}")
+            
 
 
 else:
