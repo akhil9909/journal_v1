@@ -7,7 +7,7 @@ import os
 import json
 from functions import run_assistant, get_chat_history, get_chat_message, auto_save_chat_history
 from streamlit_session_states import get_session_states
-from awsfunc import save_chat_history, get_openai_api_key, get_credentials,save_feedback,aws_error_log,fetch_file_ids
+from awsfunc import save_chat_history, get_openai_api_key, get_credentials,save_feedback,aws_error_log,fetch_file_ids,remember_me
 from cached_functions import get_css, ROOT_DIR
 import base64
 import asyncio
@@ -31,18 +31,8 @@ if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
 
 if "thread_id" not in st.session_state:
-    try: 
-        thread = openai.beta.threads.create()
-        #change this thread creation later so that its not created before the authentication and first prompt
-        st.session_state.thread_id = thread.id
-        st.session_state.files_attached = False
-    except Exception as e:
-        st.error(f"An error occurred in creating chat thread. Please use DEBUG for error log")
-        if st.session_state.DEBUG:
-            with st.sidebar:
-                st.text(f"Failed at chat thread creation\nError Log: {e}")
-        st.stop()
-
+    st.session_state.thread_id = 'thread_fw6JiMsCq4WOm9qYMW4Kflf9'
+    
 if "initial_prompt" not in st.session_state:
     st.session_state.initial_prompt = INITIAL_PROMPT;
 
@@ -88,6 +78,15 @@ if "assistant" not in st.session_state:
 if "analysis_mode" not in st.session_state:
     st.session_state.analysis_mode = False
 
+if "recent_response_AI" not in st.session_state:
+    st.session_state.recent_response_AI = ""
+
+if "recent_response_human" not in st.session_state:
+    st.session_state.recent_response_human = ""
+
+if "recent_deadclick" not in st.session_state:
+    st.session_state.recent_deadclick = ""
+
 # Get query parameters
 try:
     if st.query_params["DEBUG"].lower() == "true":
@@ -107,6 +106,19 @@ if 'config_path' not in st.session_state:
 
 
 ## Helper Functions
+
+def start_thread():
+    try: 
+        thread = openai.beta.threads.create()
+        #change this thread creation later so that its not created before the authentication and first prompt
+        st.session_state.thread_id = thread.id
+        st.session_state.files_attached = False
+    except Exception as e:
+        st.error(f"An error occurred in creating chat thread. Please use DEBUG for error log")
+        if st.session_state.DEBUG:
+            with st.sidebar:
+                st.text(f"Failed at chat thread creation\nError Log: {e}")
+        st.stop()
 
 def reset_session() -> dict:
     res = {'status': 0, 'message': "Success"}
@@ -128,6 +140,10 @@ def reset_session() -> dict:
         res['message'] = f"An error occurred in creating thread in reset session: {e}"
         return res
     return res
+
+#function remember_me
+
+
     
 # Function to add helper text to the textarea
 def add_helper_text(helper):
@@ -317,6 +333,7 @@ with chat_box:
         if line.startswith("AI: "):
             contents = line.split("AI: ")[1]
             st.markdown(get_chat_message(contents), unsafe_allow_html=True)
+            st.session_state.recent_response_AI = contents
         
         if st.session_state.analysis_mode:
             if line.startswith("Feedback: "):
@@ -329,6 +346,7 @@ with chat_box:
         if line.startswith("Human: "):
             contents = line.split("Human: ")[1]
             st.markdown(get_chat_message(contents, align="right"), unsafe_allow_html=True)
+            st.session_state.recent_response_human = contents
 
 #add helpers
 with hint_box:
@@ -344,10 +362,24 @@ with hint_box:
                         
 with feedback_box:
     if st.session_state.authenticated and st.session_state.main_called_once:
-        if st.button("feedback") and not st.session_state.feedback_provided:
-            Feedback()
-        elif st.session_state.feedback_provided and st.button("edit your feedback"):
-            Feedback()
+        col_R1, col_R2 = st.columns(2)
+        with col_R1:
+            if st.button("feedback") and not st.session_state.feedback_provided:
+                Feedback()
+            elif st.session_state.feedback_provided and st.button("edit your feedback"):
+                Feedback()
+        with col_R2:
+            if st.button("Remember this response",type='primary'):
+                if st.session_state.recent_response_AI != "":
+                    if st.session_state.recent_deadclick != st.session_state.recent_response_AI:
+                        user_id = 'dev'
+                        remember_me(user_id, st.session_state.thread_id , st.session_state.recent_response_AI, st.session_state.recent_response_human)
+                        st.success("Response saved successfully")
+                        st.session_state.recent_deadclick = st.session_state.recent_response_AI
+                    else:
+                        st.warning("Response already saved")
+                else:
+                    st.warning("No response to save")
 
 # Define an input box for human prompts
 with prompt_box:
@@ -360,7 +392,7 @@ with prompt_box:
             human_prompt =  st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
 
 if st.session_state.authenticated:
-    if not st.session_state.files_attached:
+    if not st.session_state.files_attached and st.session_state.get("thread_id") != 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
         file_ids = fetch_file_ids(promptops_assistant_id)
         if file_ids and st.session_state.get("thread_id"):
             try:
@@ -400,7 +432,13 @@ if st.session_state.authenticated:
                     st.sidebar.write(f"Failed to attach files to thread: {e}")
 
 
+    if st.session_state.get("thread_id", "") == 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
+        st.page_link("https://9draft.com/my_conversations",label="Existing Sessions", icon="⛳")
+        st.button("Start a new conversation", key="start_thread", on_click=start_thread)
+    
+    #if st.session_state.get("thread_id", "") != 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
     run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}",type='primary')
+    
 
 if st.session_state.main_called_once:
     hint_box.empty()
