@@ -240,7 +240,6 @@ if st.session_state.authenticated:
             all_assistants = "all"
             
             thread_ids = fetch_thread_ids(all_assistants)
-            st.session_state.dummy_check = thread_ids
             for thread_id in thread_ids:
                 st.success(f"Thread ID: {thread_id}")
                 try:

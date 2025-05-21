@@ -7,7 +7,7 @@ import os
 import json
 from functions import run_assistant, get_chat_history, get_chat_message, auto_save_chat_history
 from streamlit_session_states import get_session_states
-from awsfunc import save_chat_history, get_openai_api_key, get_credentials,save_feedback,aws_error_log,fetch_file_ids,remember_me
+from awsfunc import save_chat_history, get_openai_api_key, get_credentials,save_feedback,aws_error_log,fetch_file_ids,remember_me,get_env_name
 from cached_functions import get_css, ROOT_DIR
 import base64
 import asyncio
@@ -87,6 +87,18 @@ if "recent_response_human" not in st.session_state:
 if "recent_deadclick" not in st.session_state:
     st.session_state.recent_deadclick = ""
 
+try:
+    if "environment" not in st.session_state:
+        st.session_state.environment = get_env_name()
+        if st.session_state.environment == "prod":
+            st.session_state.config_path = os.path.join(ROOT_DIR, 'src', 'mapping_prod.yaml')
+        else:
+            st.session_state.config_path = os.path.join(ROOT_DIR, 'src', 'mapping.yaml')
+except Exception as e:
+    if st.session_state.DEBUG:
+        with st.sidebar:
+            st.text(f"Failed to get environment name\nError Log: {e}")
+
 # Get query parameters
 try:
     if st.query_params["DEBUG"].lower() == "true":
@@ -96,8 +108,6 @@ except KeyError:
 
 #file path to mapping.yaml
 # Load configuration from YAML file
-
-st.session_state.config_path = os.path.join(ROOT_DIR, 'src', 'mapping.yaml')
 
 if 'config_path' not in st.session_state:
     st.session_state.config_path = "error in the file path to mapping.yaml"
@@ -194,6 +204,7 @@ if st.session_state.DEBUG:
 
 #selected_assistant = st.selectbox("Select Assistant", assistantid)
     # Load the assistant mapping from a YAML file
+
 with open(st.session_state.config_path, 'r') as file:
     assistant_mapping = yaml.safe_load(file)
 

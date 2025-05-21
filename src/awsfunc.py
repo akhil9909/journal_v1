@@ -13,6 +13,16 @@ import requests
 # Configure logging
 aws_error_log = []
 
+#get env for mapping.yaml
+def get_env_name():
+    try:
+        # Attempt to fetch the table name from environment variables (for production)
+        env_name = os.environ['ENV_NAME']
+        return env_name
+    except KeyError:
+        # If the environment variable is not set, default to a static name (for development)
+        return 'dev'
+
 # Get the name of the DynamoDB table
 def get_dynamodb_table_name():
     try:
