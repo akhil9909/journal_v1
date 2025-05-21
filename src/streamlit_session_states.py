@@ -38,7 +38,7 @@ def get_session_states():
         st.write(f"recent_response_AI: {st.session_state.get('recent_response_AI', 'Not set')}")
         st.write(f"recent_response_human: {st.session_state.get('recent_response_human', 'Not set')}")
         st.write(f"recent_deadclick: {st.session_state.get('recent_deadclick', 'Not set')}")
-        st.write(f"dummy_check: {st.session_state.get('dummy_check', 'Not set')}")
+        st.write(f"environment: {st.session_state.get('environment', 'Not set')}")
         #from my conversations.py
         #no additional session states, but following are loaded in a fucntion here to navigate to App.py
         #those are thread_id, LOG, main_called_once, assistant

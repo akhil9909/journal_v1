@@ -86,7 +86,7 @@ def save_file_to_agent():
         text_blob += f"Title: {entry['title']}\nDescription: {entry['description']}\n\n"
 
     try:
-        # List all files
+        # List all filesclient.
         files_response = client.files.list()
         files = files_response.data  # list of files
 
@@ -240,7 +240,6 @@ if st.session_state.authenticated:
             all_assistants = "all"
             
             thread_ids = fetch_thread_ids(all_assistants)
-            st.session_state.dummy_check = thread_ids
             for thread_id in thread_ids:
                 st.success(f"Thread ID: {thread_id}")
                 try:
