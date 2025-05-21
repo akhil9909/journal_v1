@@ -53,6 +53,16 @@ def get_dynamodb_table_name_file_ids():
         # If the environment variable is not set, default to a static name (for development)
         return 'file_ids_dev'
 
+def get_secret_key_name():
+    try:
+        # Attempt to fetch the table name from environment variables (for production)
+        secret_key = os.environ['SECRET_KEY_NAME']
+        return secret_key
+    except KeyError:
+        # If the environment variable is not set, default to a static name (for development)
+        return 'OPENAI_API_KEY'
+
+
 def aws_log_error(message):
     aws_error_log.append(message)
     logging.error(message)
@@ -103,7 +113,7 @@ def save_chat_history(thread_id, assistant_id, user_prompt, chat_history, Boolea
 
 def get_openai_api_key():
 
-    secret_name = "OPENAI_API_KEY"
+    secret_name = get_secret_key_name()
     region_name = "us-west-2"
 
     # Create a Secrets Manager client

@@ -86,7 +86,7 @@ def save_file_to_agent():
         text_blob += f"Title: {entry['title']}\nDescription: {entry['description']}\n\n"
 
     try:
-        # List all files
+        # List all filesclient.
         files_response = client.files.list()
         files = files_response.data  # list of files
 
