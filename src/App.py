@@ -394,10 +394,11 @@ with feedback_box:
 
 # Define an input box for human prompts
 with prompt_box:
-    # If authenticated, show the initial prompt
+    # If authenticated, show the initial prompt is
     if st.session_state.authenticated:
         if not st.session_state.main_called_once:
-            human_prompt = st.text_area("You: ", value=st.session_state.input_text, height=150) 
+            if st.session_state.thread_id != 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
+                human_prompt = st.text_area("You: ", value=st.session_state.input_text, height=150) 
             ## BUGALERT i was earlier assigning the key of text_area above as also the session_state = input_text. This was creating a bug where session state was not geting pdated immediately on run click
         else:
             human_prompt =  st.text_input("You: ", value="", key=f"text_input_{len(st.session_state.LOG)}")
@@ -445,7 +446,7 @@ if st.session_state.authenticated:
 
     if st.session_state.get("thread_id", "") == 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
         st.page_link("https://9draft.com/my_conversations",label="Existing Sessions", icon="⛳")
-        st.button("Start a new conversation", key="start_thread", on_click=start_thread)
+        st.button("Start a new conversation", key="start_thread", type='primary', on_click=start_thread)
     
     #if st.session_state.get("thread_id", "") != 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
     run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}",type='primary')
