@@ -207,7 +207,7 @@ if st.session_state.authenticated:
                 st.session_state.learning_component_linked = st.session_state.learning_component
         #added in try block because st.session_state.learning_component_linked is not initialized
 
-        # if st.session_state.summarized_topics:
+        #22 if st.session_state.summarized_topics:
         #     with st.expander(":green[*Summary of your notes*]", expanded=False):
         #         st.caption(f":blue[{st.session_state.summarized_topics}]") 
         #         #write a function to save the summary to the database, but a generic function rather than a specific one

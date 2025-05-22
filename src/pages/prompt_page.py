@@ -22,8 +22,8 @@ import yaml
 client = OpenAI(api_key=get_openai_api_key())
 
 
-if 'promptops_assistant' not in st.session_state:
-    st.session_state['promptops_assistant'] = "Basic"
+#if 'promptops_assistant' not in st.session_state:
+#    st.session_state['promptops_assistant'] = "Basic"
 
 if 'authenticated' not in st.session_state:
     st.session_state.authenticated = False
