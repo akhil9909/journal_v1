@@ -394,7 +394,7 @@ with feedback_box:
 
 # Define an input box for human prompts
 with prompt_box:
-    # If authenticated, show the initial prompt
+    # If authenticated, show the initial prompt is
     if st.session_state.authenticated:
         if not st.session_state.main_called_once:
             if st.session_state.thread_id != 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
