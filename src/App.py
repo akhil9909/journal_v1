@@ -445,7 +445,7 @@ if st.session_state.authenticated:
 
 
     if st.session_state.get("thread_id", "") == 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
-        st.page_link("https://9draft.com/my_conversations",label=":blue[**Existing Sessions**]", icon="⛳")
+        st.page_link("https://9draft.com/my_conversations",label="Existing Sessions", icon="⛳")
         st.button("Start a new conversation", key="start_thread", type='primary', on_click=start_thread)
     
     #if st.session_state.get("thread_id", "") != 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
