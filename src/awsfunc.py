@@ -149,7 +149,8 @@ def get_openai_api_key():
     
     try:
         secret_dict = json.loads(secret_data)  # Parse the JSON string
-        openai_api_key_res = secret_dict['OPENAI_API_KEY'] 
+        temp_v1667 = get_secret_key_name()
+        openai_api_key_res = secret_dict[temp_v1667] 
     except json.JSONDecodeError as e:
         aws_log_error(f"Error decoding JSON: {e}")
         return None
