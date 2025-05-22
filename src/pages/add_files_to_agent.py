@@ -19,7 +19,7 @@ import yaml
 
 # Load configuration from YAML file
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-st.session_state.config_path = os.path.join(ROOT_DIR, 'src', 'mapping.yaml')
+#st.session_state.config_path = os.path.join(ROOT_DIR, 'src', 'mapping.yaml')
 
 if 'config_path' not in st.session_state:
     st.session_state.config_path = "error in the file path to mapping.yaml"
