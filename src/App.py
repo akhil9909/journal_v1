@@ -449,7 +449,15 @@ if st.session_state.authenticated:
         st.button("Start a new conversation", key="start_thread", type='primary', on_click=start_thread)
     
     #if st.session_state.get("thread_id", "") != 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
-    run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}",type='primary')
+    try:
+        if st.session_state.get("thread_id", "") != 'thread_fw6JiMsCq4WOm9qYMW4Kflf9':
+            run_button = st.button("Send", key=f"send_button_{len(st.session_state.LOG)}",type='primary')
+        else:
+            run_button = False
+    except Exception as e:
+        if st.session_state.DEBUG:
+            st.sidebar.write(f"failed in send button, likely user didnt start new conversation: {e}")
+        
     
 
 if st.session_state.main_called_once:

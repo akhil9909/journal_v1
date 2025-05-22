@@ -83,6 +83,9 @@ dynamodb = boto3.resource('dynamodb')
 
 # Insert a new item or update an existing item
 def save_chat_history(thread_id, assistant_id, user_prompt, chat_history, Boolean_Flag_to_Update_Chat_History):
+    if chat_history == "dummy message":
+        aws_log_error("Chat history is dummy message, skipping save as likley you are saving in debug mode.")
+        return False
     try:
         table_name = get_dynamodb_table_name()
         table = dynamodb.Table(table_name)
